@@ -1,5 +1,5 @@
 import { ParsedEndpoint } from "../types/openapi";
-import { getPathParams, getQueryParams, getHeaderParams } from "./openapi-parser";
+import { getPathParams, getQueryParams, getHeaderParams, getRequestBodyContentType } from "./openapi-parser";
 
 export interface CurlOptions {
   baseUrl: string;
@@ -81,9 +81,10 @@ export function generateCurl(endpoint: ParsedEndpoint, options: CurlOptions): st
     }
   }
 
-  // Add Content-Type for requests with body
+  // Add Content-Type for requests with body (use spec-defined content type or default to application/json)
   if (endpoint.requestBody && ["POST", "PUT", "PATCH"].includes(endpoint.method)) {
-    parts.push('-H "Content-Type: application/json"');
+    const contentType = getRequestBodyContentType(endpoint) || "application/json";
+    parts.push(`-H "Content-Type: ${contentType}"`);
 
     // Use custom body JSON if provided, otherwise use example or placeholder
     if (options.bodyJson) {

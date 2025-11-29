@@ -130,6 +130,73 @@ export function getHeaderParams(endpoint: ParsedEndpoint): Parameter[] {
   return endpoint.parameters.filter((p) => p.in === "header");
 }
 
+export interface BodyParameter {
+  name: string;
+  type: string;
+  required: boolean;
+  description?: string;
+  example?: unknown;
+}
+
+/**
+ * Extract body parameters from request body schema
+ */
+export function getBodyParams(endpoint: ParsedEndpoint): BodyParameter[] {
+  if (!endpoint.requestBody?.content) {
+    return [];
+  }
+
+  // Try to get schema from application/json first, then any other content type
+  const mediaType =
+    endpoint.requestBody.content["application/json"] ||
+    endpoint.requestBody.content["application/merge-patch+json"] ||
+    Object.values(endpoint.requestBody.content)[0];
+
+  const properties = mediaType?.schema?.properties;
+  if (!properties) {
+    return [];
+  }
+
+  const requiredFields = mediaType.schema?.required || [];
+
+  return Object.entries(properties).map(([name, propSchema]) => ({
+    name,
+    type: propSchema.type || "unknown",
+    required: requiredFields.includes(name),
+    description: propSchema.description,
+    example: propSchema.example ?? propSchema.default,
+  }));
+}
+
+/**
+ * Get the preferred content type for request body
+ * Handles application/json, application/merge-patch+json, etc.
+ */
+export function getRequestBodyContentType(endpoint: ParsedEndpoint): string | null {
+  if (!endpoint.requestBody?.content) {
+    return null;
+  }
+
+  const contentTypes = Object.keys(endpoint.requestBody.content);
+
+  // Prefer these content types in order
+  const preferredTypes = [
+    "application/json",
+    "application/merge-patch+json",
+    "application/json-patch+json",
+    "text/json",
+  ];
+
+  for (const preferred of preferredTypes) {
+    if (contentTypes.includes(preferred)) {
+      return preferred;
+    }
+  }
+
+  // Return first available content type if no preferred match
+  return contentTypes[0] || null;
+}
+
 /**
  * Format endpoint for display
  */

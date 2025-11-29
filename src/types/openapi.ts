@@ -64,6 +64,7 @@ export interface Schema {
   enum?: unknown[];
   default?: unknown;
   example?: unknown;
+  description?: string;
 }
 
 export interface Response {

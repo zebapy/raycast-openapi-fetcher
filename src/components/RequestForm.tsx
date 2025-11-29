@@ -1,7 +1,14 @@
 import { Action, ActionPanel, Clipboard, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { CurlOptions, generateCurl } from "../lib/curl-generator";
-import { getHeaderParams, getPathParams, getQueryParams } from "../lib/openapi-parser";
+import {
+  BodyParameter,
+  getBodyParams,
+  getHeaderParams,
+  getPathParams,
+  getQueryParams,
+  getRequestBodyContentType,
+} from "../lib/openapi-parser";
 import { addRequestToHistory, maskSensitiveHeaders } from "../lib/storage";
 import { validateJson } from "../lib/validation";
 import { getErrorMessage } from "../lib/toast-utils";
@@ -25,18 +32,49 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
   const [response, setResponse] = useState<string | null>(null);
   const [authSource, setAuthSource] = useState<AuthSource>(curlOptions.authToken ? "stored" : "custom");
   const [customToken, setCustomToken] = useState<string>("");
+  const [bodyParamValues, setBodyParamValues] = useState<Record<string, string>>({});
 
   const activeToken = authSource === "stored" ? curlOptions.authToken : customToken;
 
   const pathParams = getPathParams(endpoint);
   const queryParams = getQueryParams(endpoint);
   const headerParams = getHeaderParams(endpoint);
+  const bodyParams = useMemo(() => getBodyParams(endpoint), [endpoint]);
 
   const hasBody = endpoint.requestBody && ["POST", "PUT", "PATCH"].includes(endpoint.method);
   const allParams = [...pathParams, ...queryParams, ...headerParams];
 
   function updateParam(name: string, value: string) {
     setParamValues((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function updateBodyParam(name: string, value: string) {
+    setBodyParamValues((prev) => ({ ...prev, [name]: value }));
+  }
+
+  // Build JSON body from individual body parameters
+  function buildBodyFromParams(): string {
+    if (Object.keys(bodyParamValues).length === 0) {
+      return "";
+    }
+    const body: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(bodyParamValues)) {
+      if (value.trim()) {
+        // Try to parse as JSON for objects/arrays/numbers/booleans
+        try {
+          body[key] = JSON.parse(value);
+        } catch {
+          // If not valid JSON, use as string
+          body[key] = value;
+        }
+      }
+    }
+    return Object.keys(body).length > 0 ? JSON.stringify(body, null, 2) : "";
+  }
+
+  // Get effective body: use raw JSON if provided, otherwise build from params
+  function getEffectiveBody(): string {
+    return bodyJson.trim() || buildBodyFromParams();
   }
 
   function handleBodyChange(value: string) {
@@ -49,7 +87,7 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       ...curlOptions,
       authToken: activeToken,
       paramValues,
-      bodyJson: bodyJson.trim() || undefined,
+      bodyJson: getEffectiveBody() || undefined,
     });
   }
 
@@ -80,8 +118,10 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
   }
 
   async function executeRequest() {
+    const effectiveBody = getEffectiveBody();
+
     // Validate body JSON if provided
-    if (bodyJson.trim() && validateJson(bodyJson)) {
+    if (effectiveBody && validateJson(effectiveBody)) {
       await showToast({
         style: Toast.Style.Failure,
         title: "Invalid JSON",
@@ -120,9 +160,10 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
         }
       }
 
-      // Add Content-Type for body requests
+      // Add Content-Type for body requests (use spec-defined content type or default to application/json)
       if (hasBody) {
-        headers["Content-Type"] = "application/json";
+        const contentType = getRequestBodyContentType(endpoint) || "application/json";
+        headers["Content-Type"] = contentType;
       }
 
       const fetchOptions: RequestInit = {
@@ -130,8 +171,8 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
         headers,
       };
 
-      if (hasBody && bodyJson.trim()) {
-        fetchOptions.body = bodyJson.trim();
+      if (hasBody && effectiveBody) {
+        fetchOptions.body = effectiveBody;
       }
 
       const res = await fetch(url, fetchOptions);
@@ -153,7 +194,7 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
         path: endpoint.path,
         url,
         headers: maskSensitiveHeaders(headers),
-        body: hasBody && bodyJson.trim() ? bodyJson.trim() : undefined,
+        body: hasBody && effectiveBody ? effectiveBody : undefined,
         timestamp: new Date().toISOString(),
         response: {
           status: res.status,
@@ -303,14 +344,38 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       {hasBody && (
         <>
           <Form.Separator />
-          <Form.Description title="Request Body" text="JSON body for the request" />
+          <Form.Description title="Request Body" text="Fill in body parameters or use raw JSON below" />
+          {bodyParams.length > 0 && (
+            <>
+              {bodyParams.map((param) => (
+                <Form.TextField
+                  key={param.name}
+                  id={`body_${param.name}`}
+                  title={`${param.name}${param.required ? " *" : ""}`}
+                  placeholder={
+                    param.example !== undefined
+                      ? `e.g. ${JSON.stringify(param.example)}`
+                      : param.description || `Enter ${param.name} (${param.type})`
+                  }
+                  info={`${param.type}${param.required ? " - Required" : " - Optional"}${param.description ? ` - ${param.description}` : ""}`}
+                  onChange={(value) => updateBodyParam(param.name, value)}
+                />
+              ))}
+              <Form.Separator />
+              <Form.Description title="Raw JSON (Optional)" text="Override body parameters with raw JSON" />
+            </>
+          )}
           <Form.TextArea
             id="body"
             title="Body (JSON)"
-            placeholder='{"key": "value"}'
+            placeholder={bodyParams.length > 0 ? "Leave empty to use parameters above" : '{"key": "value"}'}
             error={bodyError}
             onChange={handleBodyChange}
-            info="Enter valid JSON for the request body"
+            info={
+              bodyParams.length > 0
+                ? "If provided, this overrides the individual body parameters"
+                : "Enter valid JSON for the request body"
+            }
           />
         </>
       )}

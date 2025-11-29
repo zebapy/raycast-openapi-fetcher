@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
 import { useState } from "react";
 import { CurlOptions, generateCompactCurl } from "../lib/curl-generator";
-import { formatEndpointTitle, groupEndpointsByTag } from "../lib/openapi-parser";
+import { formatEndpointTitle, getBodyParams, groupEndpointsByTag } from "../lib/openapi-parser";
 import { getMethodColor } from "../lib/colors";
 import { useOpenApiSpec } from "../hooks/useOpenApiSpec";
 import { ParsedEndpoint, StoredSpec } from "../types/openapi";
@@ -41,15 +41,40 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
             .join("\n")
         : "No parameters";
 
+    const bodyParams = getBodyParams(endpoint);
+    const bodyParamsList =
+      bodyParams.length > 0
+        ? bodyParams
+            .map(
+              (p) =>
+                `• **${p.name}** (${p.type})${p.required ? " *required*" : ""}: ${p.description || "No description"}`,
+            )
+            .join("\n")
+        : null;
+
+    const bodySection = bodyParamsList ? `\n\n### Request Body\n${bodyParamsList}` : "";
+
+    // Generate curl with obfuscated token for display
+    const displayCurlOptions = {
+      ...getCurlOptions(),
+      authToken: token ? "••••••••" : undefined,
+    };
+    const curlSample = generateCompactCurl(endpoint, displayCurlOptions);
+
     return `
 ## ${endpoint.summary || formatEndpointTitle(endpoint)}
 
 ${endpoint.description || ""}
 
 ### Parameters
-${paramsList}
+${paramsList}${bodySection}
 
 ${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
+
+### Example
+\`\`\`bash
+${curlSample}
+\`\`\`
     `.trim();
   }
 
@@ -61,6 +86,7 @@ ${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
       searchText={searchText}
       onSearchTextChange={setSearchText}
       isShowingDetail
+      filtering={true}
     >
       {Array.from(groupedEndpoints.entries()).map(([tag, tagEndpoints]) => (
         <List.Section key={tag} title={tag} subtitle={`${tagEndpoints.length} endpoints`}>
