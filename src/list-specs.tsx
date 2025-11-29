@@ -1,4 +1,16 @@
-import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, List, showToast, Toast } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Alert,
+  Color,
+  confirmAlert,
+  Icon,
+  LaunchProps,
+  List,
+  showToast,
+  Toast,
+} from "@raycast/api";
+import { useEffect, useState } from "react";
 import AddOpenAPISpec from "./add-openapi-spec";
 import { deleteSpec, duplicateSpec } from "./lib/storage";
 import { useSpecs } from "./hooks";
@@ -8,8 +20,30 @@ import { StoredSpec } from "./types/openapi";
 // Re-export BrowseEndpoints for use in other commands
 export { BrowseEndpoints } from "./components";
 
-export default function ListSpecs() {
+interface DeeplinkContext {
+  specId?: string;
+  operationId?: string;
+}
+
+export default function ListSpecs(props: LaunchProps<{ launchContext: DeeplinkContext }>) {
   const { specs, specsWithToken, isLoading, refresh } = useSpecs();
+  const [deeplinkSpec, setDeeplinkSpec] = useState<StoredSpec | null>(null);
+  const context = props.launchContext;
+
+  // Handle deeplink navigation
+  useEffect(() => {
+    if (context?.specId && specs.length > 0) {
+      const targetSpec = specs.find((s) => s.id === context.specId);
+      if (targetSpec) {
+        setDeeplinkSpec(targetSpec);
+      }
+    }
+  }, [context?.specId, specs]);
+
+  // If we have a deeplink target, show the BrowseEndpoints directly
+  if (deeplinkSpec) {
+    return <BrowseEndpoints spec={deeplinkSpec} onTokenChange={refresh} initialSearchText={context?.operationId} />;
+  }
 
   async function handleDelete(spec: StoredSpec) {
     const confirmed = await confirmAlert({

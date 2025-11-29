@@ -141,6 +141,14 @@ ${curlSample}
                     content={generateCompactCurl(endpoint, getCurlOptions())}
                     shortcut={{ modifiers: ["cmd"], key: "c" }}
                   />
+                  {endpoint.operationId && (
+                    <Action.CopyToClipboard
+                      title="Copy Deeplink"
+                      content={`raycast://extensions/zebapy/openapi-fetcher/list-specs?context=${encodeURIComponent(JSON.stringify({ specId: spec.id, operationId: endpoint.operationId }))}`}
+                      icon={Icon.Link}
+                      shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                    />
+                  )}
                   <Action
                     title="Set API Token"
                     icon={Icon.Key}
