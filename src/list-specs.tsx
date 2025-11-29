@@ -2,8 +2,10 @@ import {
   Action,
   ActionPanel,
   Alert,
+  Clipboard,
   Color,
   confirmAlert,
+  Form,
   Icon,
   List,
   showToast,
@@ -11,22 +13,29 @@ import {
   useNavigation,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
+import AddOpenAPISpec from "./add-openapi-spec";
+import { CurlOptions, generateCompactCurl, generateCurl } from "./lib/curl-generator";
 import {
+  formatEndpointTitle,
+  getHeaderParams,
+  getMethodColor,
+  getPathParams,
+  getQueryParams,
+  groupEndpointsByTag,
+  parseEndpoints,
+} from "./lib/openapi-parser";
+import { getToken, hasToken, setToken } from "./lib/secure-storage";
+import {
+  addRequestToHistory,
   deleteSpec,
   duplicateSpec,
   fetchSpec,
   getCachedSpec,
   getSpecs,
-  updateSpec,
-  addRequestToHistory,
   maskSensitiveHeaders,
+  updateSpec,
 } from "./lib/storage";
-import { formatEndpointTitle, getMethodColor, groupEndpointsByTag, parseEndpoints } from "./lib/openapi-parser";
-import { generateCompactCurl, CurlOptions, generateCurl } from "./lib/curl-generator";
-import { StoredSpec, OpenAPISpec, ParsedEndpoint } from "./types/openapi";
-import { getToken, hasToken } from "./lib/secure-storage";
-import AddOpenAPISpec from "./add-openapi-spec";
-import { getPathParams, getQueryParams, getHeaderParams } from "./lib/openapi-parser";
+import { OpenAPISpec, ParsedEndpoint, StoredSpec } from "./types/openapi";
 
 export default function ListSpecs() {
   const [specs, setSpecs] = useState<StoredSpec[]>([]);
@@ -326,75 +335,6 @@ ${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
     </List>
   );
 }
-
-interface EndpointDetailProps {
-  endpoint: ParsedEndpoint;
-  curlOptions: CurlOptions;
-  specId: string;
-  specName: string;
-}
-
-function EndpointDetail({ endpoint, curlOptions, specId, specName }: EndpointDetailProps) {
-  const curl = generateCompactCurl(endpoint, curlOptions);
-
-  const markdown = `
-# ${endpoint.method} ${endpoint.path}
-
-${endpoint.summary || ""}
-
-${endpoint.description || ""}
-
-## cURL Command
-
-\`\`\`bash
-${curl}
-\`\`\`
-
-## Parameters
-
-${
-  endpoint.parameters.length > 0
-    ? endpoint.parameters
-        .map((p) => `- **${p.name}** (${p.in})${p.required ? " *required*" : ""}: ${p.description || "No description"}`)
-        .join("\n")
-    : "No parameters"
-}
-
-${endpoint.hasAuth ? "\n⚠️ **This endpoint requires authentication**" : ""}
-  `.trim();
-
-  return (
-    <Detail
-      markdown={markdown}
-      actions={
-        <ActionPanel>
-          <Action.Push
-            title="Build Request"
-            target={<RequestForm endpoint={endpoint} curlOptions={curlOptions} specId={specId} specName={specName} />}
-            icon={Icon.Wand}
-          />
-          <Action.CopyToClipboard title="Copy as Curl" content={curl} shortcut={{ modifiers: ["cmd"], key: "c" }} />
-        </ActionPanel>
-      }
-      metadata={
-        <Detail.Metadata>
-          <Detail.Metadata.Label title="Method" text={endpoint.method} />
-          <Detail.Metadata.Label title="Path" text={endpoint.path} />
-          {endpoint.operationId && <Detail.Metadata.Label title="Operation ID" text={endpoint.operationId} />}
-          <Detail.Metadata.Separator />
-          <Detail.Metadata.TagList title="Tags">
-            {endpoint.tags.map((tag) => (
-              <Detail.Metadata.TagList.Item key={tag} text={tag} color={Color.Blue} />
-            ))}
-          </Detail.Metadata.TagList>
-        </Detail.Metadata>
-      }
-    />
-  );
-}
-
-import { Detail, Form, Clipboard } from "@raycast/api";
-import { setToken } from "./lib/secure-storage";
 
 interface RequestFormProps {
   endpoint: ParsedEndpoint;
