@@ -7,6 +7,8 @@ import { validateJson } from "../lib/validation";
 import { getErrorMessage } from "../lib/toast-utils";
 import { ParsedEndpoint } from "../types/openapi";
 
+type AuthSource = "stored" | "custom";
+
 export interface RequestFormProps {
   endpoint: ParsedEndpoint;
   curlOptions: CurlOptions;
@@ -21,6 +23,10 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
   const [bodyError, setBodyError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
+  const [authSource, setAuthSource] = useState<AuthSource>(curlOptions.authToken ? "stored" : "custom");
+  const [customToken, setCustomToken] = useState<string>("");
+
+  const activeToken = authSource === "stored" ? curlOptions.authToken : customToken;
 
   const pathParams = getPathParams(endpoint);
   const queryParams = getQueryParams(endpoint);
@@ -41,6 +47,7 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
   function getCurlWithValues(): string {
     return generateCurl(endpoint, {
       ...curlOptions,
+      authToken: activeToken,
       paramValues,
       bodyJson: bodyJson.trim() || undefined,
     });
@@ -91,16 +98,16 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       const headers: Record<string, string> = {};
 
       // Add auth header
-      if (curlOptions.authToken) {
+      if (activeToken) {
         switch (curlOptions.authType) {
           case "bearer":
-            headers["Authorization"] = `Bearer ${curlOptions.authToken}`;
+            headers["Authorization"] = `Bearer ${activeToken}`;
             break;
           case "api-key":
-            headers[curlOptions.authHeader || "X-API-Key"] = curlOptions.authToken;
+            headers[curlOptions.authHeader || "X-API-Key"] = activeToken;
             break;
           case "basic":
-            headers["Authorization"] = `Basic ${curlOptions.authToken}`;
+            headers["Authorization"] = `Basic ${activeToken}`;
             break;
         }
       }
@@ -215,6 +222,32 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       }
     >
       <Form.Description title="Endpoint" text={`${endpoint.method} ${endpoint.path}`} />
+
+      <Form.Separator />
+      <Form.Description title="Authentication" text="Choose authentication method" />
+      <Form.Dropdown
+        id="authSource"
+        title="Token Source"
+        value={authSource}
+        onChange={(value) => setAuthSource(value as AuthSource)}
+      >
+        <Form.Dropdown.Item
+          value="stored"
+          title={curlOptions.authToken ? "Stored Token" : "Stored Token (Not Set)"}
+          icon={curlOptions.authToken ? Icon.Key : Icon.ExclamationMark}
+        />
+        <Form.Dropdown.Item value="custom" title="Custom Token" icon={Icon.Pencil} />
+      </Form.Dropdown>
+      {authSource === "custom" && (
+        <Form.TextField
+          id="customToken"
+          title="Custom Token"
+          placeholder="Enter your API token"
+          value={customToken}
+          onChange={setCustomToken}
+          info="Enter a custom token to use for this request"
+        />
+      )}
 
       {pathParams.length > 0 && (
         <>
