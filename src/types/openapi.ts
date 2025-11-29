@@ -100,3 +100,23 @@ export interface ParsedEndpoint {
   requestBody?: RequestBody;
   hasAuth: boolean;
 }
+
+// Types for request history
+
+export interface RequestHistoryEntry {
+  id: string;
+  specId: string;
+  specName: string;
+  method: HttpMethod;
+  path: string;
+  url: string;
+  headers: Record<string, string>; // Auth token value will be masked
+  body?: string;
+  timestamp: string;
+  response: {
+    status: number;
+    statusText: string;
+    body: string;
+    contentType: string;
+  };
+}

@@ -34,3 +34,33 @@ export async function hasToken(specId: string): Promise<boolean> {
   const token = await getToken(specId);
   return Boolean(token);
 }
+
+/**
+ * List all stored API tokens with their spec IDs
+ */
+export async function listAllTokens(): Promise<Array<{ specId: string; token: string }>> {
+  const allItems = await LocalStorage.allItems();
+  const tokens: Array<{ specId: string; token: string }> = [];
+
+  for (const [key, value] of Object.entries(allItems)) {
+    if (key.startsWith(TOKEN_PREFIX) && typeof value === "string") {
+      const specId = key.slice(TOKEN_PREFIX.length);
+      tokens.push({ specId, token: value });
+    }
+  }
+
+  return tokens;
+}
+
+/**
+ * Clear all stored API tokens
+ */
+export async function clearAllTokens(): Promise<void> {
+  const allItems = await LocalStorage.allItems();
+
+  for (const key of Object.keys(allItems)) {
+    if (key.startsWith(TOKEN_PREFIX)) {
+      await LocalStorage.removeItem(key);
+    }
+  }
+}

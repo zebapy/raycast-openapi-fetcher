@@ -4,6 +4,7 @@ import { addSpec, fetchSpec, cacheSpec, generateSpecId } from "./lib/storage";
 import { getBaseUrl, parseAndValidateSpec } from "./lib/openapi-parser";
 import { readFile } from "fs/promises";
 import { OpenAPISpec } from "./types/openapi";
+import { BrowseEndpoints } from "./list-specs";
 
 type SourceType = "url" | "paste" | "file";
 
@@ -21,7 +22,7 @@ export default function AddOpenAPISpec() {
   const [urlError, setUrlError] = useState<string | undefined>();
   const [contentError, setContentError] = useState<string | undefined>();
   const [fileError, setFileError] = useState<string | undefined>();
-  const { pop } = useNavigation();
+  const { push } = useNavigation();
 
   async function handleSubmit(values: FormValues) {
     setIsLoading(true);
@@ -104,7 +105,7 @@ export default function AddOpenAPISpec() {
           url: sourceUrl || `pasted:${Date.now()}`,
           baseUrl,
         },
-        specId
+        specId,
       );
 
       await showToast({
@@ -113,7 +114,7 @@ export default function AddOpenAPISpec() {
         message: `${savedSpec.name} with ${Object.keys(spec.paths).length} paths`,
       });
 
-      pop();
+      push(<BrowseEndpoints spec={savedSpec} />);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       await showToast({

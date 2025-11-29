@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "openapi-fetcher",
-  "title": "openapi-fetcher",
-  "description": "Add an OpenAPI spec, auth token, then make requests. ",
+  "title": "OpenAPI Fetcher",
+  "description": "Browse and manage OpenAPI specifications directly from Raycast. Add specs from files, URLs, or popular APIs, and easily access their endpoints and manage API tokens.",
   "icon": "extension-icon.png",
   "author": "zebapy",
   "platforms": [
@@ -18,14 +18,37 @@
   "commands": [
     {
       "name": "add-openapi-spec",
-      "title": "Add OpenAPI Spec",
+      "title": "Import OpenAPI Spec",
+      "subtitle": "Add a spec from file, URL, or paste contents",
       "description": "Add a new OpenAPI specification URL to your collection",
       "mode": "view"
     },
     {
       "name": "list-specs",
-      "title": "Browse API Specs",
+      "title": "List API Specs",
+      "subtitle": "View and use locally saved specs",
       "description": "View saved OpenAPI specs and browse their endpoints",
+      "mode": "view"
+    },
+    {
+      "name": "list-tokens",
+      "title": "List API Tokens",
+      "subtitle": "View and manage stored API tokens",
+      "description": "View, update, and delete stored API tokens for your specs",
+      "mode": "view"
+    },
+    {
+      "name": "browse-popular-specs",
+      "title": "Browse Popular APIs",
+      "subtitle": "Download a spec from popular APIs",
+      "description": "Discover and add popular OpenAPI specifications",
+      "mode": "view"
+    },
+    {
+      "name": "request-history",
+      "title": "Request History",
+      "subtitle": "View past API requests and responses",
+      "description": "Browse your API request history with request and response details",
       "mode": "view"
     }
   ],

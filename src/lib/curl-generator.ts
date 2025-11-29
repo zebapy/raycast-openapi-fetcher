@@ -7,13 +7,15 @@ export interface CurlOptions {
   authType?: "bearer" | "api-key" | "basic";
   authHeader?: string; // Custom header name for API key auth
   includeExampleBody?: boolean;
+  paramValues?: Record<string, string>; // Actual values for parameters
+  bodyJson?: string; // Custom JSON body for the request
 }
 
 /**
  * Generate a cURL command for an endpoint
  */
 export function generateCurl(endpoint: ParsedEndpoint, options: CurlOptions): string {
-  const { baseUrl, authToken, authType = "bearer", authHeader = "X-API-Key" } = options;
+  const { baseUrl, authToken, authType = "bearer", authHeader = "X-API-Key", paramValues = {} } = options;
 
   const parts: string[] = ["curl"];
 
@@ -22,18 +24,32 @@ export function generateCurl(endpoint: ParsedEndpoint, options: CurlOptions): st
     parts.push(`-X ${endpoint.method}`);
   }
 
-  // Build the URL with path parameters as placeholders
+  // Build the URL with path parameters
   let url = `${baseUrl}${endpoint.path}`;
   const pathParams = getPathParams(endpoint);
   for (const param of pathParams) {
-    url = url.replace(`{${param.name}}`, `<${param.name}>`);
+    const value = paramValues[param.name];
+    if (value) {
+      url = url.replace(`{${param.name}}`, encodeURIComponent(value));
+    } else {
+      url = url.replace(`{${param.name}}`, `{${param.name}}`);
+    }
   }
 
-  // Add query parameters as placeholders
+  // Add query parameters - only include those with values or required ones
   const queryParams = getQueryParams(endpoint);
-  if (queryParams.length > 0) {
-    const queryString = queryParams.map((p) => `${p.name}=<${p.name}>`).join("&");
-    url += `?${queryString}`;
+  const queryParts: string[] = [];
+  for (const param of queryParams) {
+    const value = paramValues[param.name];
+    if (value) {
+      queryParts.push(`${param.name}=${encodeURIComponent(value)}`);
+    } else if (param.required) {
+      queryParts.push(`${param.name}={${param.name}}`);
+    }
+    // Skip optional params without values
+  }
+  if (queryParts.length > 0) {
+    url += `?${queryParts.join("&")}`;
   }
 
   // Add auth header
@@ -54,18 +70,27 @@ export function generateCurl(endpoint: ParsedEndpoint, options: CurlOptions): st
     parts.push('-H "Authorization: Bearer <YOUR_TOKEN>"');
   }
 
-  // Add custom header parameters
+  // Add custom header parameters - only include those with values or required ones
   const headerParams = getHeaderParams(endpoint);
   for (const param of headerParams) {
-    parts.push(`-H "${param.name}: <${param.name}>"`);
+    const value = paramValues[param.name];
+    if (value) {
+      parts.push(`-H "${param.name}: ${value}"`);
+    } else if (param.required) {
+      parts.push(`-H "${param.name}: {${param.name}}"`);
+    }
   }
 
   // Add Content-Type for requests with body
   if (endpoint.requestBody && ["POST", "PUT", "PATCH"].includes(endpoint.method)) {
     parts.push('-H "Content-Type: application/json"');
 
-    // Add example body placeholder
-    if (options.includeExampleBody) {
+    // Use custom body JSON if provided, otherwise use example or placeholder
+    if (options.bodyJson) {
+      // Escape single quotes in the JSON for shell safety
+      const escapedBody = options.bodyJson.replace(/'/g, "'\\''");
+      parts.push(`-d '${escapedBody}'`);
+    } else if (options.includeExampleBody) {
       const exampleBody = generateExampleBody(endpoint);
       parts.push(`-d '${exampleBody}'`);
     } else {

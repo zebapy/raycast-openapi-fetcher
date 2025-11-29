@@ -1,0 +1,140 @@
+[
+  {
+    "name": "OpenAI",
+    "description": "GPT models, embeddings, and assistants API",
+    "url": "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml",
+    "category": "AI & ML"
+  },
+  {
+    "name": "Anthropic",
+    "description": "Claude AI models API",
+    "url": "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/main/api.yaml",
+    "category": "AI & ML"
+  },
+  {
+    "name": "Hugging Face",
+    "description": "ML models and inference API",
+    "url": "https://huggingface.co/api/openapi.json",
+    "category": "AI & ML"
+  },
+  {
+    "name": "Faraday AI",
+    "description": "AI-powered data analysis and insights",
+    "url": "https://app.faraday.ai/api.json",
+    "category": "AI & ML"
+  },
+  {
+    "name": "GitHub",
+    "description": "Repositories, issues, PRs, and more",
+    "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
+    "category": "Developer Tools"
+  },
+  {
+    "name": "GitLab",
+    "description": "GitLab REST API",
+    "url": "https://gitlab.com/api/v4/openapi.json",
+    "category": "Developer Tools"
+  },
+  {
+    "name": "Vercel",
+    "description": "Deployments, domains, and projects",
+    "url": "https://openapi.vercel.sh/",
+    "category": "Developer Tools"
+  },
+  {
+    "name": "Netlify",
+    "description": "Sites, deploys, and functions",
+    "url": "https://open-api.netlify.com/",
+    "category": "Developer Tools"
+  },
+  {
+    "name": "Slack",
+    "description": "Messaging, channels, and workspaces",
+    "url": "https://raw.githubusercontent.com/slackapi/slack-api-specs/master/web-api/slack_web_openapi_v2.json",
+    "category": "Communication"
+  },
+  {
+    "name": "Discord",
+    "description": "Servers, channels, and messages",
+    "url": "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
+    "category": "Communication"
+  },
+  {
+    "name": "Twilio",
+    "description": "SMS, voice, and messaging",
+    "url": "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
+    "category": "Communication"
+  },
+  {
+    "name": "SendGrid",
+    "description": "Email delivery API",
+    "url": "https://raw.githubusercontent.com/sendgrid/sendgrid-oai/main/oai.json",
+    "category": "Communication"
+  },
+  {
+    "name": "Stripe",
+    "description": "Payments, subscriptions, and invoices",
+    "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+    "category": "Payments & Finance"
+  },
+  {
+    "name": "Plaid",
+    "description": "Banking and financial data",
+    "url": "https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml",
+    "category": "Payments & Finance"
+  },
+  {
+    "name": "DigitalOcean",
+    "description": "Droplets, Kubernetes, and databases",
+    "url": "https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml",
+    "category": "Cloud & Infrastructure"
+  },
+  {
+    "name": "Cloudflare",
+    "description": "DNS, Workers, and security",
+    "url": "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json",
+    "category": "Cloud & Infrastructure"
+  },
+  {
+    "name": "Notion",
+    "description": "Pages, databases, and blocks",
+    "url": "https://raw.githubusercontent.com/NotionX/notion-sdk-py/main/notion_openapi.json",
+    "category": "Productivity"
+  },
+  {
+    "name": "Asana",
+    "description": "Tasks, projects, and workspaces",
+    "url": "https://raw.githubusercontent.com/Asana/openapi/main/defs/asana_oas.yaml",
+    "category": "Productivity"
+  },
+  {
+    "name": "Linear",
+    "description": "Issues, projects, and cycles",
+    "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/openapi.json",
+    "category": "Productivity"
+  },
+  {
+    "name": "Shopify Admin",
+    "description": "Products, orders, and customers",
+    "url": "https://raw.githubusercontent.com/Shopify/shopify-api-js/main/rest/admin/2024-01/admin-2024-01.json",
+    "category": "E-commerce"
+  },
+  {
+    "name": "Mixpanel",
+    "description": "Analytics and user tracking",
+    "url": "https://raw.githubusercontent.com/nicklasbekkevold/mixpanel-openapi/main/openapi.yaml",
+    "category": "Data & Analytics"
+  },
+  {
+    "name": "PetStore (Sample)",
+    "description": "OpenAPI sample spec for testing",
+    "url": "https://petstore3.swagger.io/api/v3/openapi.json",
+    "category": "Examples"
+  },
+  {
+    "name": "SWAPI",
+    "description": "Star Wars API - planets, starships, vehicles, people, films, and species",
+    "url": "https://raw.githubusercontent.com/Juriy/swapi-openapi/refs/heads/main/swapi-openapi.json",
+    "category": "Examples"
+  }
+]
