@@ -1,9 +1,5 @@
-import { Action, ActionPanel, Icon, List, showToast, Toast, useNavigation } from "@raycast/api";
-import { useState } from "react";
-import { addSpec, fetchSpec, cacheSpec, generateSpecId } from "./lib/storage";
-import { getBaseUrl } from "./lib/openapi-parser";
-import { showErrorToast } from "./lib/toast-utils";
-import { BrowseEndpoints } from "./components";
+import { Action, ActionPanel, Icon, List, useNavigation } from "@raycast/api";
+import AddOpenAPISpec from "./add-openapi-spec";
 import popularSpecsData from "./data/popular-specs.json";
 
 interface PopularSpec {
@@ -27,51 +23,16 @@ function groupByCategory(specs: PopularSpec[]): Map<string, PopularSpec[]> {
 }
 
 export default function BrowsePopularSpecs() {
-  const [isLoading, setIsLoading] = useState(false);
   const { push } = useNavigation();
 
   const groupedSpecs = groupByCategory(POPULAR_SPECS);
 
-  async function handleAddSpec(spec: PopularSpec) {
-    setIsLoading(true);
-
-    try {
-      await showToast({
-        style: Toast.Style.Animated,
-        title: `Fetching ${spec.name} spec...`,
-      });
-
-      const openApiSpec = await fetchSpec(spec.url);
-      const baseUrl = getBaseUrl(openApiSpec);
-      const specId = generateSpecId();
-
-      await cacheSpec(specId, openApiSpec);
-
-      const savedSpec = await addSpec(
-        {
-          name: spec.name,
-          url: spec.url,
-          baseUrl,
-        },
-        specId,
-      );
-
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Spec added",
-        message: `${spec.name} with ${Object.keys(openApiSpec.paths).length} endpoints`,
-      });
-
-      push(<BrowseEndpoints spec={savedSpec} />);
-    } catch (error) {
-      await showErrorToast(`Failed to add ${spec.name}`, error);
-    } finally {
-      setIsLoading(false);
-    }
+  function handleSelectSpec(spec: PopularSpec) {
+    push(<AddOpenAPISpec initialUrl={spec.url} initialName={spec.name} />);
   }
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder="Search popular APIs...">
+    <List searchBarPlaceholder="Search popular APIs...">
       {Array.from(groupedSpecs.entries()).map(([category, specs]) => (
         <List.Section key={category} title={category} subtitle={`${specs.length} APIs`}>
           {specs.map((spec) => (
@@ -82,7 +43,7 @@ export default function BrowsePopularSpecs() {
               accessories={[{ tag: category }]}
               actions={
                 <ActionPanel>
-                  <Action title="Add to Collection" icon={Icon.Plus} onAction={() => handleAddSpec(spec)} />
+                  <Action title="Add to Collection" icon={Icon.Plus} onAction={() => handleSelectSpec(spec)} />
                   <Action.OpenInBrowser title="View Spec URL" url={spec.url} />
                   <Action.CopyToClipboard
                     title="Copy Spec URL"

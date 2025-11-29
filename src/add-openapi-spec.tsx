@@ -18,13 +18,18 @@ interface FormValues {
   name: string;
 }
 
-export default function AddOpenAPISpec() {
+export interface AddOpenAPISpecProps {
+  initialUrl?: string;
+  initialName?: string;
+}
+
+export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISpecProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [sourceType, setSourceType] = useState<SourceType>("url");
   const [urlError, setUrlError] = useState<string | undefined>();
   const [contentError, setContentError] = useState<string | undefined>();
   const [fileError, setFileError] = useState<string | undefined>();
-  const { push } = useNavigation();
+  const { push, pop } = useNavigation();
 
   async function handleSubmit(values: FormValues) {
     setIsLoading(true);
@@ -116,6 +121,11 @@ export default function AddOpenAPISpec() {
         message: `${savedSpec.name} with ${Object.keys(spec.paths).length} paths`,
       });
 
+      // If we came from popular specs (has initialUrl), pop first so back navigation
+      // returns to the list specs view instead of the add form
+      if (initialUrl) {
+        pop();
+      }
       push(<BrowseEndpoints spec={savedSpec} />);
     } catch (error) {
       await showErrorToast("Failed to add spec", error);
@@ -158,6 +168,7 @@ export default function AddOpenAPISpec() {
           id="url"
           title="OpenAPI Spec URL"
           placeholder="https://api.example.com/openapi.json"
+          defaultValue={initialUrl}
           error={urlError}
           onChange={handleUrlChange}
           onBlur={(event) => handleUrlChange(event.target.value)}
@@ -190,6 +201,7 @@ export default function AddOpenAPISpec() {
         id="name"
         title="Name (optional)"
         placeholder="Leave empty to use spec title"
+        defaultValue={initialName}
         info="A friendly name for this API spec. If left empty, the title from the spec will be used."
       />
 
