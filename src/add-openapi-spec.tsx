@@ -2,9 +2,11 @@ import { Action, ActionPanel, Form, showToast, Toast, useNavigation } from "@ray
 import { useState } from "react";
 import { addSpec, fetchSpec, cacheSpec, generateSpecId } from "./lib/storage";
 import { getBaseUrl, parseAndValidateSpec } from "./lib/openapi-parser";
+import { validateUrl } from "./lib/validation";
+import { showErrorToast } from "./lib/toast-utils";
 import { readFile } from "fs/promises";
+import { BrowseEndpoints } from "./components";
 import { OpenAPISpec } from "./types/openapi";
-import { BrowseEndpoints } from "./list-specs";
 
 type SourceType = "url" | "paste" | "file";
 
@@ -116,28 +118,14 @@ export default function AddOpenAPISpec() {
 
       push(<BrowseEndpoints spec={savedSpec} />);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to add spec",
-        message,
-      });
+      await showErrorToast("Failed to add spec", error);
     } finally {
       setIsLoading(false);
     }
   }
 
-  function validateUrl(value: string | undefined) {
-    if (!value) {
-      setUrlError("URL is required");
-      return;
-    }
-    try {
-      new URL(value);
-      setUrlError(undefined);
-    } catch {
-      setUrlError("Invalid URL format");
-    }
+  function handleUrlChange(value: string | undefined) {
+    setUrlError(validateUrl(value));
   }
 
   return (
@@ -171,8 +159,8 @@ export default function AddOpenAPISpec() {
           title="OpenAPI Spec URL"
           placeholder="https://api.example.com/openapi.json"
           error={urlError}
-          onChange={validateUrl}
-          onBlur={(event) => validateUrl(event.target.value)}
+          onChange={handleUrlChange}
+          onBlur={(event) => handleUrlChange(event.target.value)}
         />
       )}
 

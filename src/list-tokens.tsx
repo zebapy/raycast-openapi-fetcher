@@ -1,19 +1,9 @@
-import {
-  Action,
-  ActionPanel,
-  Alert,
-  Color,
-  confirmAlert,
-  Form,
-  Icon,
-  List,
-  showToast,
-  Toast,
-  useNavigation,
-} from "@raycast/api";
+import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, List, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { getSpecs } from "./lib/storage";
-import { listAllTokens, deleteToken, setToken, clearAllTokens } from "./lib/secure-storage";
+import { listAllTokens, deleteToken, clearAllTokens } from "./lib/secure-storage";
+import { getErrorMessage } from "./lib/toast-utils";
+import { SetTokenForm } from "./components";
 import { StoredSpec } from "./types/openapi";
 
 interface TokenWithSpec {
@@ -52,11 +42,10 @@ export default function ListTokens() {
 
       setTokens(tokensWithSpecs);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
       await showToast({
         style: Toast.Style.Failure,
         title: "Failed to load tokens",
-        message,
+        message: getErrorMessage(error),
       });
     } finally {
       setIsLoading(false);
@@ -180,71 +169,5 @@ export default function ListTokens() {
         })
       )}
     </List>
-  );
-}
-
-interface SetTokenFormProps {
-  specId: string;
-  specName: string;
-  onSave: () => void;
-}
-
-function SetTokenForm({ specId, specName, onSave }: SetTokenFormProps) {
-  const { pop } = useNavigation();
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function handleSubmit(values: { token: string }) {
-    if (!values.token) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Token is required",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await setToken(specId, values.token);
-      onSave();
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Token saved",
-        message: `Token saved securely for ${specName}`,
-      });
-      pop();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to save token",
-        message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  return (
-    <Form
-      isLoading={isLoading}
-      navigationTitle={`Update Token for ${specName}`}
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Save Token" onSubmit={handleSubmit} />
-        </ActionPanel>
-      }
-    >
-      <Form.PasswordField
-        id="token"
-        title="API Token"
-        placeholder="Enter your API token"
-        info="This token will be stored securely"
-      />
-      <Form.Description
-        title="Security"
-        text="Your token is stored locally and will be used when generating cURL commands for this API."
-      />
-    </Form>
   );
 }

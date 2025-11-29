@@ -2,7 +2,8 @@ import { Action, ActionPanel, Icon, List, showToast, Toast, useNavigation } from
 import { useState } from "react";
 import { addSpec, fetchSpec, cacheSpec, generateSpecId } from "./lib/storage";
 import { getBaseUrl } from "./lib/openapi-parser";
-import { BrowseEndpoints } from "./list-specs";
+import { showErrorToast } from "./lib/toast-utils";
+import { BrowseEndpoints } from "./components";
 import popularSpecsData from "./data/popular-specs.json";
 
 interface PopularSpec {
@@ -63,12 +64,7 @@ export default function BrowsePopularSpecs() {
 
       push(<BrowseEndpoints spec={savedSpec} />);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      await showToast({
-        style: Toast.Style.Failure,
-        title: `Failed to add ${spec.name}`,
-        message,
-      });
+      await showErrorToast(`Failed to add ${spec.name}`, error);
     } finally {
       setIsLoading(false);
     }

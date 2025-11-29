@@ -1,8 +1,10 @@
 import { Action, ActionPanel, Alert, Color, confirmAlert, Detail, Icon, List, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { getRequestHistory, deleteRequestHistoryEntry, clearRequestHistory, getSpec } from "./lib/storage";
-import { RequestHistoryEntry, HttpMethod, StoredSpec } from "./types/openapi";
-import { BrowseEndpoints } from "./list-specs";
+import { getMethodColor } from "./lib/colors";
+import { getErrorMessage } from "./lib/toast-utils";
+import { BrowseEndpoints } from "./components";
+import { RequestHistoryEntry, StoredSpec } from "./types/openapi";
 
 function generateCurlFromHistory(entry: RequestHistoryEntry): string {
   const parts: string[] = ["curl"];
@@ -241,19 +243,6 @@ ${entry.response.body}
   );
 }
 
-function getMethodColor(method: HttpMethod): Color {
-  const colors: Record<HttpMethod, Color> = {
-    GET: Color.Blue,
-    POST: Color.Green,
-    PUT: Color.Orange,
-    PATCH: Color.Yellow,
-    DELETE: Color.Red,
-    OPTIONS: Color.Purple,
-    HEAD: Color.Magenta,
-  };
-  return colors[method] || Color.SecondaryText;
-}
-
 interface ViewEndpointInSpecProps {
   entry: RequestHistoryEntry;
 }
@@ -273,8 +262,7 @@ function ViewEndpointInSpec({ entry }: ViewEndpointInSpecProps) {
           setSpec(storedSpec);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        setError(`Failed to load spec: ${message}`);
+        setError(`Failed to load spec: ${getErrorMessage(err)}`);
       } finally {
         setIsLoading(false);
       }
