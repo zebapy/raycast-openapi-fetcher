@@ -1,17 +1,23 @@
 import { OpenAPISpec, ParsedEndpoint, HttpMethod, PathItem, Operation, Parameter } from "../types/openapi";
+import yaml from "js-yaml";
 
 const HTTP_METHODS: Array<keyof PathItem> = ["get", "post", "put", "patch", "delete", "options", "head"];
 
 /**
- * Parse and validate a JSON string as an OpenAPI spec
+ * Parse and validate a JSON or YAML string as an OpenAPI spec
  */
 export function parseAndValidateSpec(content: string): OpenAPISpec {
   let spec: OpenAPISpec;
 
+  // Try JSON first, then YAML
   try {
     spec = JSON.parse(content) as OpenAPISpec;
   } catch {
-    throw new Error("Invalid JSON: Could not parse the spec content");
+    try {
+      spec = yaml.load(content) as OpenAPISpec;
+    } catch {
+      throw new Error("Invalid format: Could not parse the spec content as JSON or YAML");
+    }
   }
 
   // Validate it looks like an OpenAPI spec

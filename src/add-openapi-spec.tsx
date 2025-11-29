@@ -161,7 +161,7 @@ export default function AddOpenAPISpec() {
         }}
       >
         <Form.Dropdown.Item value="url" title="Fetch from URL" icon="🌐" />
-        <Form.Dropdown.Item value="paste" title="Paste JSON Content" icon="📋" />
+        <Form.Dropdown.Item value="paste" title="Paste JSON/YAML Content" icon="📋" />
         <Form.Dropdown.Item value="file" title="Read from File" icon="📁" />
       </Form.Dropdown>
 
@@ -180,7 +180,7 @@ export default function AddOpenAPISpec() {
         <Form.TextArea
           id="content"
           title="Spec Content"
-          placeholder='Paste your OpenAPI JSON here...\n\n{"openapi": "3.0.0", ...}'
+          placeholder='Paste your OpenAPI JSON or YAML here...\n\n{"openapi": "3.0.0", ...}\n\nor\n\nopenapi: "3.0.0"\ninfo:\n  title: My API'
           error={contentError}
           onChange={() => setContentError(undefined)}
           enableMarkdown={false}
@@ -207,7 +207,7 @@ export default function AddOpenAPISpec() {
 
       <Form.Description
         title="Supported Formats"
-        text="JSON OpenAPI 3.x specs are supported. The spec will be validated before saving."
+        text="JSON and YAML OpenAPI 3.x specs are supported. The spec will be validated before saving."
       />
     </Form>
   );

@@ -126,6 +126,12 @@
     "category": "Data & Analytics"
   },
   {
+    "name": "PokéAPI",
+    "description": "Pokemon data - creatures, abilities, moves, items, and games",
+    "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml",
+    "category": "Games"
+  },
+  {
     "name": "PetStore (Sample)",
     "description": "OpenAPI sample spec for testing",
     "url": "https://petstore3.swagger.io/api/v3/openapi.json",

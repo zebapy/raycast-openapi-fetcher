@@ -1,5 +1,6 @@
 import { LocalStorage } from "@raycast/api";
 import { StoredSpec, OpenAPISpec, RequestHistoryEntry } from "../types/openapi";
+import yaml from "js-yaml";
 
 const SPECS_KEY = "openapi-specs";
 const SPEC_CACHE_PREFIX = "spec-cache-";
@@ -116,13 +117,29 @@ export async function fetchSpec(url: string, specId?: string): Promise<OpenAPISp
   }
 
   const contentType = response.headers.get("content-type") || "";
+  const text = await response.text();
+
+  let spec: OpenAPISpec;
 
   if (contentType.includes("yaml") || url.endsWith(".yaml") || url.endsWith(".yml")) {
-    // For YAML specs, we'd need a YAML parser - for now, assume JSON
-    throw new Error("YAML specs are not supported yet. Please use a JSON spec URL.");
+    // Parse YAML spec
+    try {
+      spec = yaml.load(text) as OpenAPISpec;
+    } catch {
+      throw new Error("Failed to parse YAML spec");
+    }
+  } else {
+    // Try JSON first, then fall back to YAML
+    try {
+      spec = JSON.parse(text) as OpenAPISpec;
+    } catch {
+      try {
+        spec = yaml.load(text) as OpenAPISpec;
+      } catch {
+        throw new Error("Failed to parse spec as JSON or YAML");
+      }
+    }
   }
-
-  const spec: OpenAPISpec = (await response.json()) as OpenAPISpec;
 
   // Validate it looks like an OpenAPI spec
   if (!spec.paths || (!spec.openapi && !spec.swagger)) {

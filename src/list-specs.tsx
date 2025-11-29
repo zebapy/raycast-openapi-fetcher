@@ -215,6 +215,29 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
     };
   }
 
+  function getEndpointDetailMarkdown(endpoint: ParsedEndpoint): string {
+    const paramsList =
+      endpoint.parameters.length > 0
+        ? endpoint.parameters
+            .map(
+              (p) =>
+                `• **${p.name}** (${p.in})${p.required ? " *required*" : ""}: ${p.description || "No description"}`,
+            )
+            .join("\n")
+        : "No parameters";
+
+    return `
+## ${endpoint.summary || formatEndpointTitle(endpoint)}
+
+${endpoint.description || ""}
+
+### Parameters
+${paramsList}
+
+${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
+    `.trim();
+  }
+
   return (
     <List
       isLoading={isLoading}
@@ -222,6 +245,7 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
       navigationTitle={spec.name}
       searchText={searchText}
       onSearchTextChange={setSearchText}
+      isShowingDetail
     >
       {Array.from(groupedEndpoints.entries()).map(([tag, tagEndpoints]) => (
         <List.Section key={tag} title={tag} subtitle={`${tagEndpoints.length} endpoints`}>
@@ -231,22 +255,34 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
               title={formatEndpointTitle(endpoint)}
               subtitle={endpoint.path}
               icon={{ source: Icon.Circle, tintColor: getMethodColor(endpoint.method) }}
-              accessories={[
-                {
-                  tag: {
-                    value: endpoint.method,
-                    color: getMethodColorTag(endpoint.method),
-                  },
-                },
-                endpoint.hasAuth ? { icon: Icon.Lock, tooltip: "Requires Auth" } : {},
-              ]}
+              accessories={[endpoint.hasAuth ? { icon: Icon.Lock, tooltip: "Requires Auth" } : {}]}
+              detail={
+                <List.Item.Detail
+                  markdown={getEndpointDetailMarkdown(endpoint)}
+                  metadata={
+                    <List.Item.Detail.Metadata>
+                      <List.Item.Detail.Metadata.TagList title="Method">
+                        <List.Item.Detail.Metadata.TagList.Item
+                          text={endpoint.method}
+                          color={getMethodColorTag(endpoint.method)}
+                        />
+                      </List.Item.Detail.Metadata.TagList>
+                      <List.Item.Detail.Metadata.Label title="Path" text={endpoint.path} />
+                      {endpoint.operationId && (
+                        <List.Item.Detail.Metadata.Label title="Operation ID" text={endpoint.operationId} />
+                      )}
+                      <List.Item.Detail.Metadata.Separator />
+                      <List.Item.Detail.Metadata.TagList title="Tags">
+                        {endpoint.tags.map((tag) => (
+                          <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} color={Color.Blue} />
+                        ))}
+                      </List.Item.Detail.Metadata.TagList>
+                    </List.Item.Detail.Metadata>
+                  }
+                />
+              }
               actions={
                 <ActionPanel>
-                  <Action.CopyToClipboard
-                    title="Copy as Curl"
-                    content={generateCompactCurl(endpoint, getCurlOptions())}
-                    shortcut={{ modifiers: ["cmd"], key: "c" }}
-                  />
                   <Action.Push
                     title="Build Request"
                     target={
@@ -258,12 +294,11 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
                       />
                     }
                     icon={Icon.Wand}
-                    shortcut={{ modifiers: ["cmd"], key: "b" }}
                   />
-                  <Action.Push
-                    title="View Details"
-                    target={<EndpointDetail endpoint={endpoint} curlOptions={getCurlOptions()} />}
-                    icon={Icon.Eye}
+                  <Action.CopyToClipboard
+                    title="Copy as Curl"
+                    content={generateCompactCurl(endpoint, getCurlOptions())}
+                    shortcut={{ modifiers: ["cmd"], key: "c" }}
                   />
                   <Action
                     title="Set API Token"
@@ -295,9 +330,11 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
 interface EndpointDetailProps {
   endpoint: ParsedEndpoint;
   curlOptions: CurlOptions;
+  specId: string;
+  specName: string;
 }
 
-function EndpointDetail({ endpoint, curlOptions }: EndpointDetailProps) {
+function EndpointDetail({ endpoint, curlOptions, specId, specName }: EndpointDetailProps) {
   const curl = generateCompactCurl(endpoint, curlOptions);
 
   const markdown = `
@@ -331,7 +368,12 @@ ${endpoint.hasAuth ? "\n⚠️ **This endpoint requires authentication**" : ""}
       markdown={markdown}
       actions={
         <ActionPanel>
-          <Action.CopyToClipboard title="Copy as Curl" content={curl} />
+          <Action.Push
+            title="Build Request"
+            target={<RequestForm endpoint={endpoint} curlOptions={curlOptions} specId={specId} specName={specName} />}
+            icon={Icon.Wand}
+          />
+          <Action.CopyToClipboard title="Copy as Curl" content={curl} shortcut={{ modifiers: ["cmd"], key: "c" }} />
         </ActionPanel>
       }
       metadata={

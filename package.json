@@ -32,7 +32,7 @@
     },
     {
       "name": "list-tokens",
-      "title": "List API Tokens",
+      "title": "Manage Tokens",
       "subtitle": "View and manage stored API tokens",
       "description": "View, update, and delete stored API tokens for your specs",
       "mode": "view"
@@ -54,10 +54,12 @@
   ],
   "dependencies": {
     "@raycast/api": "^1.103.9",
-    "@raycast/utils": "^1.17.0"
+    "@raycast/utils": "^1.17.0",
+    "js-yaml": "^4.1.1"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "22.13.10",
     "@types/react": "19.0.10",
     "eslint": "^9.22.0",
@@ -70,6 +72,7 @@
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
-    "publish": "npx @raycast/api@latest publish"
+    "publish": "npx @raycast/api@latest publish",
+    "validate-specs": "npx tsx scripts/validate-specs.ts"
   }
 }
