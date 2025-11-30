@@ -4,6 +4,7 @@
     "description": "GPT models, embeddings, and assistants API",
     "url": "https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml",
     "category": "AI & ML",
+    "siteUrl": "https://openai.com",
     "docsUrlTemplate": "https://platform.openai.com/docs/api-reference/{operationId}"
   },
   {
@@ -11,6 +12,7 @@
     "description": "AI-powered data analysis and insights",
     "url": "https://app.faraday.ai/api.json",
     "category": "AI & ML",
+    "siteUrl": "https://faraday.ai",
     "docsUrlTemplate": "https://faraday.ai/docs/api/reference/{operationId}"
   },
   {
@@ -18,67 +20,78 @@
     "description": "Repositories, issues, PRs, and more",
     "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
     "category": "Developer Tools",
+    "siteUrl": "https://github.com",
     "docsUrlTemplate": "https://docs.github.com/en/rest/{operationId}"
   },
   {
     "name": "Vercel",
     "description": "Deployments, domains, and projects",
     "url": "https://openapi.vercel.sh/",
-    "category": "Developer Tools"
+    "category": "Developer Tools",
+    "siteUrl": "https://vercel.com"
   },
   {
     "name": "CircleCI",
     "description": "CI/CD pipelines, jobs, and workflows",
     "url": "https://circleci.com/api/v2/openapi.json",
-    "category": "Developer Tools"
+    "category": "Developer Tools",
+    "siteUrl": "https://circleci.com"
   },
   {
     "name": "Sentry",
     "description": "Error tracking and performance monitoring",
     "url": "https://raw.githubusercontent.com/getsentry/sentry/master/api-docs/openapi.json",
-    "category": "Developer Tools"
+    "category": "Developer Tools",
+    "siteUrl": "https://sentry.io"
   },
   {
     "name": "Discord",
     "description": "Servers, channels, and messages",
     "url": "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
-    "category": "Communication"
+    "category": "Communication",
+    "siteUrl": "https://discord.com"
   },
   {
     "name": "Plaid",
     "description": "Banking and financial data",
     "url": "https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml",
-    "category": "Payments & Finance"
+    "category": "Payments & Finance",
+    "siteUrl": "https://plaid.com"
   },
   {
     "name": "DigitalOcean",
     "description": "Droplets, Kubernetes, and databases",
     "url": "https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml",
     "category": "Cloud & Infrastructure",
+    "siteUrl": "https://digitalocean.com",
     "docsUrlTemplate": "https://docs.digitalocean.com/reference/api/api-reference/#{operationId}"
   },
   {
     "name": "1Password",
     "description": "Password management and secrets",
     "url": "https://i.1password.com/media/1password-connect/1password-connect-api.yaml",
-    "category": "Security"
+    "category": "Security",
+    "siteUrl": "https://1password.com"
   },
   {
     "name": "Spotify",
     "description": "Music streaming, playlists, and artists",
     "url": "https://raw.githubusercontent.com/sonallux/spotify-web-api/main/fixed-spotify-open-api.yml",
-    "category": "Media & Entertainment"
+    "category": "Media & Entertainment",
+    "siteUrl": "https://spotify.com"
   },
   {
     "name": "PokéAPI",
     "description": "Pokemon data - creatures, abilities, moves, items, and games",
     "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml",
-    "category": "Games"
+    "category": "Games",
+    "siteUrl": "https://pokeapi.co"
   },
   {
     "name": "PetStore (Sample)",
     "description": "OpenAPI sample spec for testing",
     "url": "https://petstore3.swagger.io/api/v3/openapi.json",
-    "category": "Examples"
+    "category": "Examples",
+    "siteUrl": "https://petstore3.swagger.io"
   }
 ]
