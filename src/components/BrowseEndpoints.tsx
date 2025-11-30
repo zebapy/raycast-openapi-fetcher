@@ -1,9 +1,10 @@
-import { Action, ActionPanel, Color, Detail, Icon, List, useNavigation } from "@raycast/api";
-import { useMemo, useState } from "react";
+import { Action, ActionPanel, Color, Detail, Icon, List } from "@raycast/api";
+import { useEffect, useMemo, useState } from "react";
 import { CurlOptions, generateCompactCurl } from "../lib/curl-generator";
 import { formatEndpointTitle, generateRequestBodyTypeScript, groupEndpointsByTag } from "../lib/openapi-parser";
 import { getMethodColor } from "../lib/colors";
 import { useOpenApiSpec } from "../hooks/useOpenApiSpec";
+import { getSpecs } from "../lib/storage";
 import { ParsedEndpoint, StoredSpec } from "../types/openapi";
 import { SetTokenForm } from "./SetTokenForm";
 import { RequestForm } from "./RequestForm";
@@ -27,19 +28,17 @@ function EndpointDetail({
   openApiSpec,
   token,
   onTokenChange,
-  setToken,
   getEndpointSpecJson,
+  availableSpecs,
 }: {
   endpoint: ParsedEndpoint;
   spec: StoredSpec;
   openApiSpec: ReturnType<typeof useOpenApiSpec>["openApiSpec"];
   token: string | undefined;
   onTokenChange?: () => void;
-  setToken: (token: string | undefined) => void;
   getEndpointSpecJson: () => string;
+  availableSpecs: StoredSpec[];
 }) {
-  const { push } = useNavigation();
-
   const requestBodyTS = useMemo(() => generateRequestBodyTypeScript(endpoint), [endpoint]);
 
   const curlOptions: CurlOptions = useMemo(
@@ -142,22 +141,19 @@ ${curlSample}
               shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
             />
           )}
-          <Action
+          <Action.Push
             title="Set API Token"
             icon={Icon.Key}
             shortcut={{ modifiers: ["cmd"], key: "t" }}
-            onAction={() => {
-              push(
-                <SetTokenForm
-                  specId={spec.id}
-                  specName={spec.name}
-                  onSave={(newToken) => {
-                    setToken(newToken);
-                    onTokenChange?.();
-                  }}
-                />,
-              );
-            }}
+            target={
+              <SetTokenForm
+                availableSpecs={availableSpecs}
+                preselectedSpecId={spec.id}
+                onSave={() => {
+                  onTokenChange?.();
+                }}
+              />
+            }
           />
         </ActionPanel>
       }
@@ -172,14 +168,14 @@ function EndpointListItem({
   openApiSpec,
   token,
   onTokenChange,
-  setToken,
+  availableSpecs,
 }: {
   endpoint: ParsedEndpoint;
   spec: StoredSpec;
   openApiSpec: ReturnType<typeof useOpenApiSpec>["openApiSpec"];
   token: string | undefined;
   onTokenChange?: () => void;
-  setToken: (token: string | undefined) => void;
+  availableSpecs: StoredSpec[];
 }) {
   const curlOptions: CurlOptions = useMemo(
     () => ({
@@ -232,8 +228,8 @@ function EndpointListItem({
                 openApiSpec={openApiSpec}
                 token={token}
                 onTokenChange={onTokenChange}
-                setToken={setToken}
                 getEndpointSpecJson={getEndpointSpecJson}
+                availableSpecs={availableSpecs}
               />
             }
             icon={Icon.Eye}
@@ -269,8 +265,14 @@ function EndpointListItem({
 }
 
 export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: BrowseEndpointsProps) {
-  const { openApiSpec, endpoints, token, isLoading, setToken } = useOpenApiSpec(spec);
+  const { openApiSpec, endpoints, token, isLoading } = useOpenApiSpec(spec);
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [availableSpecs, setAvailableSpecs] = useState<StoredSpec[]>([]);
+
+  // Load available specs for the token form
+  useEffect(() => {
+    getSpecs().then(setAvailableSpecs);
+  }, []);
 
   // Memoize grouped endpoints to avoid recomputing on every render
   const groupedEndpoints = useMemo(() => groupEndpointsByTag(endpoints), [endpoints]);
@@ -316,7 +318,7 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
               openApiSpec={openApiSpec}
               token={token}
               onTokenChange={onTokenChange}
-              setToken={setToken}
+              availableSpecs={availableSpecs}
             />
           ))}
         </List.Section>

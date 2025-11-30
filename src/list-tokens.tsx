@@ -1,14 +1,12 @@
 import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, List, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { getSpecs } from "./lib/storage";
-import { listAllTokens, deleteToken, clearAllTokens } from "./lib/secure-storage";
+import { listAllTokens, deleteToken, clearAllTokens, StoredToken } from "./lib/secure-storage";
 import { getErrorMessage } from "./lib/toast-utils";
 import { SetTokenForm } from "./components";
 import { StoredSpec } from "./types/openapi";
 
-interface TokenWithSpec {
-  specId: string;
-  token: string;
+interface TokenWithSpec extends StoredToken {
   spec?: StoredSpec;
 }
 
@@ -23,25 +21,6 @@ function obfuscateToken(token: string): string {
   const start = token.slice(0, visibleChars);
   const middle = "•".repeat(Math.min(token.length - visibleChars, 12));
   return `${start}${middle}`;
-}
-
-/**
- * Check if a token is unassigned (not linked to a spec)
- */
-function isUnassignedToken(specId: string): boolean {
-  return specId.startsWith("unassigned-");
-}
-
-/**
- * Extract the display name from an unassigned token ID
- */
-function getUnassignedTokenName(specId: string): string {
-  // Format: unassigned-{name}-{timestamp}
-  const parts = specId.replace("unassigned-", "").split("-");
-  // Remove the timestamp (last part)
-  parts.pop();
-  // Convert back to readable name
-  return parts.join(" ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Unnamed Token";
 }
 
 export default function ListTokens() {
@@ -60,7 +39,7 @@ export default function ListTokens() {
       // Map tokens to their specs
       const tokensWithSpecs: TokenWithSpec[] = allTokens.map((t) => ({
         ...t,
-        spec: allSpecs.find((s) => s.id === t.specId),
+        spec: allSpecs.find((s) => s.id === t.defaultSpecId),
       }));
 
       setTokens(tokensWithSpecs);
@@ -79,14 +58,10 @@ export default function ListTokens() {
     loadTokens();
   }, []);
 
-  // Get set of spec IDs that already have tokens
-  const existingTokenSpecIds = new Set(tokens.map((t) => t.specId));
-
   async function handleDelete(tokenInfo: TokenWithSpec) {
-    const specName = tokenInfo.spec?.name || tokenInfo.specId;
     const confirmed = await confirmAlert({
       title: "Delete Token",
-      message: `Are you sure you want to delete the token for "${specName}"?`,
+      message: `Are you sure you want to delete "${tokenInfo.name}"?`,
       primaryAction: {
         title: "Delete",
         style: Alert.ActionStyle.Destructive,
@@ -94,12 +69,12 @@ export default function ListTokens() {
     });
 
     if (confirmed) {
-      await deleteToken(tokenInfo.specId);
+      await deleteToken(tokenInfo.id);
       await loadTokens();
       await showToast({
         style: Toast.Style.Success,
         title: "Token deleted",
-        message: `Token for ${specName} has been removed`,
+        message: `"${tokenInfo.name}" has been removed`,
       });
     }
   }
@@ -132,14 +107,7 @@ export default function ListTokens() {
         <ActionPanel>
           <Action.Push
             title="Add New Token"
-            target={
-              <SetTokenForm
-                mode="new"
-                availableSpecs={specs}
-                existingTokenSpecIds={existingTokenSpecIds}
-                onSave={loadTokens}
-              />
-            }
+            target={<SetTokenForm mode="new" availableSpecs={specs} onSave={loadTokens} />}
             icon={Icon.Plus}
             shortcut={{ modifiers: ["cmd"], key: "n" }}
           />
@@ -155,14 +123,7 @@ export default function ListTokens() {
             <ActionPanel>
               <Action.Push
                 title="Add New Token"
-                target={
-                  <SetTokenForm
-                    mode="new"
-                    availableSpecs={specs}
-                    existingTokenSpecIds={existingTokenSpecIds}
-                    onSave={loadTokens}
-                  />
-                }
+                target={<SetTokenForm mode="new" availableSpecs={specs} onSave={loadTokens} />}
                 icon={Icon.Plus}
               />
             </ActionPanel>
@@ -170,66 +131,55 @@ export default function ListTokens() {
         />
       ) : (
         tokens.map((tokenInfo) => {
-          const isUnassigned = isUnassignedToken(tokenInfo.specId);
-          const isOrphan = !tokenInfo.spec && !isUnassigned;
-          const specName = isUnassigned
-            ? getUnassignedTokenName(tokenInfo.specId)
-            : tokenInfo.spec?.name || "Unknown Spec";
+          const hasSpec = Boolean(tokenInfo.spec);
+          const specName = tokenInfo.spec?.name || "No spec assigned";
 
           // Determine status
           let statusTag: { value: string; color: Color };
           let statusTooltip: string;
-          if (isUnassigned) {
-            statusTag = { value: "Unassigned", color: Color.Blue };
-            statusTooltip = "Not linked to any spec yet";
-          } else if (isOrphan) {
+          if (!tokenInfo.defaultSpecId) {
+            statusTag = { value: "No Spec", color: Color.Orange };
+            statusTooltip = "Not linked to any spec";
+          } else if (!hasSpec) {
             statusTag = { value: "Orphaned", color: Color.Orange };
-            statusTooltip = "Spec no longer exists";
+            statusTooltip = "Assigned spec no longer exists";
           } else {
             statusTag = { value: "Active", color: Color.Green };
-            statusTooltip = "Linked to spec";
+            statusTooltip = `Auto-used for ${specName}`;
           }
 
           return (
             <List.Item
-              key={tokenInfo.specId}
-              title={specName}
+              key={tokenInfo.id}
+              title={tokenInfo.name}
               subtitle={obfuscateToken(tokenInfo.token)}
               icon={{
                 source: Icon.Key,
-                tintColor: isUnassigned ? Color.Blue : isOrphan ? Color.Orange : Color.Green,
+                tintColor: hasSpec ? Color.Green : Color.Orange,
               }}
               accessories={[
                 { tag: statusTag, tooltip: statusTooltip },
+                hasSpec ? { text: specName, tooltip: "Default Spec" } : {},
                 tokenInfo.spec?.baseUrl ? { text: tokenInfo.spec.baseUrl, tooltip: "Base URL" } : {},
               ]}
               actions={
                 <ActionPanel>
                   <ActionPanel.Section>
                     <Action.Push
-                      title="Update Token"
+                      title="Edit Token"
                       target={
                         <SetTokenForm
                           mode="edit"
-                          specId={tokenInfo.specId}
-                          specName={specName}
-                          onSave={loadTokens}
-                          currentToken={tokenInfo.token}
+                          existingToken={tokenInfo}
                           availableSpecs={specs}
+                          onSave={loadTokens}
                         />
                       }
                       icon={Icon.Pencil}
                     />
                     <Action.Push
                       title="Add New Token"
-                      target={
-                        <SetTokenForm
-                          mode="new"
-                          availableSpecs={specs}
-                          existingTokenSpecIds={existingTokenSpecIds}
-                          onSave={loadTokens}
-                        />
-                      }
+                      target={<SetTokenForm mode="new" availableSpecs={specs} onSave={loadTokens} />}
                       icon={Icon.Plus}
                       shortcut={{ modifiers: ["cmd"], key: "n" }}
                     />
@@ -248,8 +198,8 @@ export default function ListTokens() {
                       shortcut={{ modifiers: ["cmd"], key: "c" }}
                     />
                     <Action.CopyToClipboard
-                      title="Copy Spec ID"
-                      content={tokenInfo.specId}
+                      title="Copy Token ID"
+                      content={tokenInfo.id}
                       shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
                     />
                   </ActionPanel.Section>

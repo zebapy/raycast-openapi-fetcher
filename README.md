@@ -25,6 +25,16 @@ A Raycast extension to manage OpenAPI specifications, browse endpoints, and copy
 4. Select an endpoint and press `⌘C` to copy as cURL
 5. Optionally set an API token with `⌘T` for authenticated requests
 
+## Security & Data Storage
+
+API tokens and spec data are stored using [Raycast's LocalStorage API](https://developers.raycast.com/information/security#data-storage), which stores data in a **local encrypted database** accessible only by this extension.
+
+If you need to clear all stored data (specs, tokens, cache), use Raycast's built-in **"Clear Local Storage"** command for this extension:
+
+1. Open Raycast Preferences → Extensions
+2. Find "OpenAPI Fetcher"
+3. Click the ••• menu → "Clear Local Storage"
+
 ## TODO
 
 - [ ] Allow pasting a spec URL directly (current)
