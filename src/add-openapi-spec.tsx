@@ -75,7 +75,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISp
             title: "Parsing spec...",
           });
 
-          spec = parseAndValidateSpec(values.content);
+          spec = await parseAndValidateSpec(values.content);
           break;
         }
 
@@ -92,7 +92,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISp
           });
 
           const fileContent = await readFile(values.filePath[0], "utf-8");
-          spec = parseAndValidateSpec(fileContent);
+          spec = await parseAndValidateSpec(fileContent);
           sourceUrl = `file://${values.filePath[0]}`;
           break;
         }

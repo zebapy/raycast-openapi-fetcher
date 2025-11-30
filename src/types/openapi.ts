@@ -13,6 +13,10 @@ export interface OpenAPISpec {
     description?: string;
   }>;
   paths: Record<string, PathItem>;
+  components?: {
+    schemas?: Record<string, Schema>;
+    securitySchemes?: Record<string, unknown>;
+  };
 }
 
 export interface PathItem {
@@ -65,6 +69,10 @@ export interface Schema {
   default?: unknown;
   example?: unknown;
   description?: string;
+  $ref?: string;
+  allOf?: Schema[];
+  oneOf?: Schema[];
+  anyOf?: Schema[];
 }
 
 export interface Response {

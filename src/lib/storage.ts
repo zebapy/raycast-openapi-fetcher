@@ -1,6 +1,6 @@
 import { LocalStorage } from "@raycast/api";
 import { StoredSpec, OpenAPISpec, RequestHistoryEntry } from "../types/openapi";
-import yaml from "js-yaml";
+import SwaggerParser from "@apidevtools/swagger-parser";
 
 const SPECS_KEY = "openapi-specs";
 const SPEC_CACHE_PREFIX = "spec-cache-";
@@ -109,49 +109,29 @@ export async function getCachedSpec(specId: string): Promise<OpenAPISpec | null>
 }
 
 // Fetch and optionally cache an OpenAPI spec from URL
+// Uses swagger-parser to dereference all $refs
 export async function fetchSpec(url: string, specId?: string): Promise<OpenAPISpec> {
-  const response = await fetch(url);
+  try {
+    // SwaggerParser.dereference fetches, parses, and resolves all $refs
+    const spec = (await SwaggerParser.dereference(url)) as OpenAPISpec;
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch spec: ${response.status} ${response.statusText}`);
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  const text = await response.text();
-
-  let spec: OpenAPISpec;
-
-  if (contentType.includes("yaml") || url.endsWith(".yaml") || url.endsWith(".yml")) {
-    // Parse YAML spec
-    try {
-      spec = yaml.load(text) as OpenAPISpec;
-    } catch {
-      throw new Error("Failed to parse YAML spec");
+    // Validate it looks like an OpenAPI spec
+    if (!spec.paths || (!spec.openapi && !spec.swagger)) {
+      throw new Error("Invalid OpenAPI specification: missing paths or version field");
     }
-  } else {
-    // Try JSON first, then fall back to YAML
-    try {
-      spec = JSON.parse(text) as OpenAPISpec;
-    } catch {
-      try {
-        spec = yaml.load(text) as OpenAPISpec;
-      } catch {
-        throw new Error("Failed to parse spec as JSON or YAML");
-      }
+
+    // Cache if we have a spec ID
+    if (specId) {
+      await cacheSpec(specId, spec);
     }
-  }
 
-  // Validate it looks like an OpenAPI spec
-  if (!spec.paths || (!spec.openapi && !spec.swagger)) {
-    throw new Error("Invalid OpenAPI specification: missing paths or version field");
+    return spec;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch/parse spec: ${error.message}`);
+    }
+    throw new Error("Failed to fetch/parse spec");
   }
-
-  // Cache if we have a spec ID
-  if (specId) {
-    await cacheSpec(specId, spec);
-  }
-
-  return spec;
 }
 
 // Generate a unique ID for request history entries
