@@ -141,19 +141,42 @@ export interface BodyParameter {
   required: boolean;
   description?: string;
   example?: unknown;
+  children?: BodyParameter[];
 }
 
 /**
  * Get formatted type string for a schema
  */
 function getSchemaTypeString(schema: Schema): string {
+  // Handle allOf/oneOf/anyOf
+  if (schema.allOf) {
+    return "object";
+  }
+  if (schema.oneOf || schema.anyOf) {
+    const options = schema.oneOf || schema.anyOf || [];
+    if (options.length > 0) {
+      const types = options.slice(0, 2).map((s) => getSchemaTypeString(s));
+      return types.join(" | ") + (options.length > 2 ? " | ..." : "");
+    }
+    return "mixed";
+  }
+
   if (schema.type === "array" && schema.items) {
     const itemType = getSchemaTypeString(schema.items);
     return `${itemType}[]`;
   }
 
+  if (schema.type === "object") {
+    if (schema.properties) {
+      const keys = Object.keys(schema.properties).slice(0, 3);
+      const preview = keys.join(", ");
+      return `object{${preview}${Object.keys(schema.properties).length > 3 ? ", ..." : ""}}`;
+    }
+    return "object";
+  }
+
   if (schema.enum) {
-    return `enum(${schema.enum.slice(0, 3).join("|")}${schema.enum.length > 3 ? "|..." : ""})`;
+    return `enum(${schema.enum.slice(0, 3).join(", ")}${schema.enum.length > 3 ? ", ..." : ""})`;
   }
 
   if (schema.format) {
@@ -198,6 +221,51 @@ function resolveSchema(schema: Schema): Schema {
 }
 
 /**
+ * Extract body parameters from a schema recursively.
+ */
+function extractBodyParams(
+  properties: Record<string, Schema>,
+  requiredFields: string[],
+  maxDepth = 3,
+  currentDepth = 0,
+): BodyParameter[] {
+  if (currentDepth >= maxDepth) {
+    return [];
+  }
+
+  return Object.entries(properties).map(([name, propSchema]) => {
+    const resolved = resolveSchema(propSchema);
+    const param: BodyParameter = {
+      name,
+      type: getSchemaTypeString(propSchema),
+      required: requiredFields.includes(name),
+      description: propSchema.description,
+      example: propSchema.example ?? propSchema.default,
+    };
+
+    // Handle nested object properties
+    if (resolved.type === "object" && resolved.properties) {
+      param.children = extractBodyParams(resolved.properties, resolved.required || [], maxDepth, currentDepth + 1);
+    }
+
+    // Handle array of objects
+    if (resolved.type === "array" && resolved.items) {
+      const itemSchema = resolveSchema(resolved.items);
+      if (itemSchema.type === "object" && itemSchema.properties) {
+        param.children = extractBodyParams(
+          itemSchema.properties,
+          itemSchema.required || [],
+          maxDepth,
+          currentDepth + 1,
+        );
+      }
+    }
+
+    return param;
+  });
+}
+
+/**
  * Extract body parameters from request body schema.
  * Handles allOf/oneOf/anyOf schemas by resolving them first.
  */
@@ -238,13 +306,7 @@ export function getBodyParams(endpoint: ParsedEndpoint): BodyParameter[] {
 
   const requiredFields = schema.required || [];
 
-  return Object.entries(properties).map(([name, propSchema]) => ({
-    name,
-    type: getSchemaTypeString(propSchema),
-    required: requiredFields.includes(name),
-    description: propSchema.description,
-    example: propSchema.example ?? propSchema.default,
-  }));
+  return extractBodyParams(properties, requiredFields);
 }
 
 /**
@@ -297,4 +359,142 @@ export function getMethodColor(method: HttpMethod): string {
     HEAD: "#9012fe",
   };
   return colors[method] || "#666";
+}
+
+/**
+ * Get the request body schema for an endpoint
+ */
+export function getRequestBodySchema(endpoint: ParsedEndpoint): Schema | null {
+  if (!endpoint.requestBody?.content) {
+    return null;
+  }
+
+  const mediaType =
+    endpoint.requestBody.content["application/json"] ||
+    endpoint.requestBody.content["application/merge-patch+json"] ||
+    Object.values(endpoint.requestBody.content)[0];
+
+  if (!mediaType?.schema) {
+    return null;
+  }
+
+  return resolveSchema(mediaType.schema);
+}
+
+/**
+ * Map OpenAPI type to TypeScript type
+ */
+function mapToTSType(schema: Schema): string {
+  // Handle allOf/oneOf/anyOf
+  if (schema.allOf) {
+    return "object";
+  }
+  if (schema.oneOf || schema.anyOf) {
+    const options = schema.oneOf || schema.anyOf || [];
+    if (options.length > 0) {
+      const types = options.slice(0, 3).map((s) => mapToTSType(s));
+      return types.join(" | ") + (options.length > 3 ? " | ..." : "");
+    }
+    return "unknown";
+  }
+
+  if (schema.enum) {
+    return schema.enum.map((v) => (typeof v === "string" ? `"${v}"` : String(v))).join(" | ");
+  }
+
+  if (schema.type === "array" && schema.items) {
+    const itemType = mapToTSType(schema.items);
+    return `${itemType}[]`;
+  }
+
+  if (schema.type === "object" || schema.properties) {
+    return "object";
+  }
+
+  // Basic type mappings
+  const typeMap: Record<string, string> = {
+    integer: "number",
+    number: "number",
+    string: "string",
+    boolean: "boolean",
+    null: "null",
+  };
+
+  return typeMap[schema.type || ""] || "unknown";
+}
+
+/**
+ * Generate TypeScript interface from request body schema
+ */
+export function generateRequestBodyTypeScript(endpoint: ParsedEndpoint): string | null {
+  const schema = getRequestBodySchema(endpoint);
+  if (!schema) {
+    return null;
+  }
+
+  const formatProperty = (name: string, propSchema: Schema, required: boolean, indent: number): string => {
+    const resolved = resolveSchema(propSchema);
+    const indentStr = "  ".repeat(indent);
+    const lines: string[] = [];
+
+    // Add JSDoc comment for description
+    if (propSchema.description) {
+      lines.push(`${indentStr}/** ${propSchema.description} */`);
+    }
+
+    const optionalMark = required ? "" : "?";
+
+    // Handle nested objects
+    if ((resolved.type === "object" || resolved.properties) && resolved.properties) {
+      lines.push(`${indentStr}${name}${optionalMark}: {`);
+      const nestedRequired = resolved.required || [];
+      for (const [propName, nested] of Object.entries(resolved.properties)) {
+        lines.push(formatProperty(propName, nested, nestedRequired.includes(propName), indent + 1));
+      }
+      lines.push(`${indentStr}};`);
+    }
+    // Handle arrays of objects
+    else if (resolved.type === "array" && resolved.items) {
+      const itemSchema = resolveSchema(resolved.items);
+      if ((itemSchema.type === "object" || itemSchema.properties) && itemSchema.properties) {
+        lines.push(`${indentStr}${name}${optionalMark}: {`);
+        const nestedRequired = itemSchema.required || [];
+        for (const [propName, nested] of Object.entries(itemSchema.properties)) {
+          lines.push(formatProperty(propName, nested, nestedRequired.includes(propName), indent + 1));
+        }
+        lines.push(`${indentStr}}[];`);
+      } else {
+        lines.push(`${indentStr}${name}${optionalMark}: ${mapToTSType(resolved)};`);
+      }
+    }
+    // Simple types
+    else {
+      lines.push(`${indentStr}${name}${optionalMark}: ${mapToTSType(resolved)};`);
+    }
+
+    return lines.join("\n");
+  };
+
+  // Handle non-object schemas (e.g., array at root)
+  if (!schema.properties) {
+    if (schema.type === "array" && schema.items) {
+      const itemSchema = resolveSchema(schema.items);
+      if (itemSchema.properties) {
+        const requiredFields = itemSchema.required || [];
+        const props = Object.entries(itemSchema.properties)
+          .map(([name, prop]) => formatProperty(name, prop, requiredFields.includes(name), 1))
+          .join("\n");
+        return `type RequestBody = {\n${props}\n}[];`;
+      }
+      return `type RequestBody = ${mapToTSType(schema.items)}[];`;
+    }
+    return `type RequestBody = ${mapToTSType(schema)};`;
+  }
+
+  const requiredFields = schema.required || [];
+  const props = Object.entries(schema.properties)
+    .map(([name, prop]) => formatProperty(name, prop, requiredFields.includes(name), 1))
+    .join("\n");
+
+  return `interface RequestBody {\n${props}\n}`;
 }

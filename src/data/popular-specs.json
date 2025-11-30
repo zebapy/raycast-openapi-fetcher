@@ -3,13 +3,15 @@
     "name": "OpenAI",
     "description": "GPT models, embeddings, and assistants API",
     "url": "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml",
-    "category": "AI & ML"
+    "category": "AI & ML",
+    "docsUrlTemplate": "https://platform.openai.com/docs/api-reference/{operationId}"
   },
   {
     "name": "Anthropic",
     "description": "Claude AI models API",
     "url": "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/main/api.yaml",
-    "category": "AI & ML"
+    "category": "AI & ML",
+    "docsUrlTemplate": "https://docs.anthropic.com/en/api/{operationId}"
   },
   {
     "name": "Hugging Face",
@@ -21,13 +23,15 @@
     "name": "Faraday AI",
     "description": "AI-powered data analysis and insights",
     "url": "https://app.faraday.ai/api.json",
-    "category": "AI & ML"
+    "category": "AI & ML",
+    "docsUrlTemplate": "https://faraday.ai/docs/api/reference/{operationId}"
   },
   {
     "name": "GitHub",
     "description": "Repositories, issues, PRs, and more",
     "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
-    "category": "Developer Tools"
+    "category": "Developer Tools",
+    "docsUrlTemplate": "https://docs.github.com/en/rest/{operationId}"
   },
   {
     "name": "GitLab",
@@ -63,7 +67,8 @@
     "name": "Twilio",
     "description": "SMS, voice, and messaging",
     "url": "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
-    "category": "Communication"
+    "category": "Communication",
+    "docsUrlTemplate": "https://www.twilio.com/docs/usage/api#{operationId}"
   },
   {
     "name": "SendGrid",
@@ -75,7 +80,8 @@
     "name": "Stripe",
     "description": "Payments, subscriptions, and invoices",
     "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
-    "category": "Payments & Finance"
+    "category": "Payments & Finance",
+    "docsUrlTemplate": "https://docs.stripe.com/api/{operationId}"
   },
   {
     "name": "Plaid",
@@ -87,13 +93,15 @@
     "name": "DigitalOcean",
     "description": "Droplets, Kubernetes, and databases",
     "url": "https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml",
-    "category": "Cloud & Infrastructure"
+    "category": "Cloud & Infrastructure",
+    "docsUrlTemplate": "https://docs.digitalocean.com/reference/api/api-reference/#{operationId}"
   },
   {
     "name": "Cloudflare",
     "description": "DNS, Workers, and security",
     "url": "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json",
-    "category": "Cloud & Infrastructure"
+    "category": "Cloud & Infrastructure",
+    "docsUrlTemplate": "https://developers.cloudflare.com/api/operations/{operationId}"
   },
   {
     "name": "Notion",

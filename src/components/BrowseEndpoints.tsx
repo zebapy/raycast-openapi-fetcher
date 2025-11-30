@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Color, Detail, Icon, List, useNavigation } from "@raycast/api";
 import { useMemo, useState } from "react";
 import { CurlOptions, generateCompactCurl } from "../lib/curl-generator";
-import { formatEndpointTitle, getBodyParams, groupEndpointsByTag } from "../lib/openapi-parser";
+import { formatEndpointTitle, generateRequestBodyTypeScript, groupEndpointsByTag } from "../lib/openapi-parser";
 import { getMethodColor } from "../lib/colors";
 import { useOpenApiSpec } from "../hooks/useOpenApiSpec";
 import { ParsedEndpoint, StoredSpec } from "../types/openapi";
@@ -12,6 +12,12 @@ export interface BrowseEndpointsProps {
   spec: StoredSpec;
   onTokenChange?: () => void;
   initialSearchText?: string;
+}
+
+// Generate docs URL from template and operationId
+function getDocsUrl(template: string | undefined, operationId: string | undefined): string | undefined {
+  if (!template || !operationId) return undefined;
+  return template.replace("{operationId}", operationId);
 }
 
 // Detail view for a single endpoint
@@ -33,6 +39,8 @@ function EndpointDetail({
   getEndpointSpecJson: () => string;
 }) {
   const { push } = useNavigation();
+
+  const requestBodyTS = useMemo(() => generateRequestBodyTypeScript(endpoint), [endpoint]);
 
   const curlOptions: CurlOptions = useMemo(
     () => ({
@@ -65,15 +73,7 @@ function EndpointDetail({
             .join("\n")
         : "No parameters";
 
-    const bodyParams = getBodyParams(endpoint);
-    const bodyParamsTable =
-      bodyParams.length > 0
-        ? `| Name | Type | Required | Description |
-|------|------|----------|-------------|
-${bodyParams.map((p) => `| \`${p.name}\` | ${p.type} | ${p.required ? "Yes" : "No"} | ${p.description || "-"} |`).join("\n")}`
-        : null;
-
-    const bodySection = bodyParamsTable ? `\n\n### Request Body\n${bodyParamsTable}` : "";
+    const bodySection = requestBodyTS ? `\n\n### Request Body\n\n\`\`\`typescript\n${requestBodyTS}\n\`\`\`` : "";
 
     return `
 ## ${endpoint.summary || formatEndpointTitle(endpoint)}
@@ -90,7 +90,7 @@ ${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
 ${curlSample}
 \`\`\`
     `.trim();
-  }, [endpoint, curlSample]);
+  }, [endpoint, curlSample, requestBodyTS]);
 
   return (
     <Detail
@@ -135,6 +135,14 @@ ${curlSample}
               content={`raycast://extensions/zebapy/openapi-fetcher/list-specs?context=${encodeURIComponent(JSON.stringify({ specId: spec.id, operationId: endpoint.operationId }))}`}
               icon={Icon.Link}
               shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+            />
+          )}
+          {endpoint.operationId && spec.docsUrlTemplate && (
+            <Action.OpenInBrowser
+              title="Open in API Docs"
+              url={getDocsUrl(spec.docsUrlTemplate, endpoint.operationId)!}
+              icon={Icon.Book}
+              shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
             />
           )}
           <Action
@@ -249,6 +257,14 @@ function EndpointListItem({
             icon={Icon.CodeBlock}
             shortcut={{ modifiers: ["cmd", "shift"], key: "j" }}
           />
+          {endpoint.operationId && spec.docsUrlTemplate && (
+            <Action.OpenInBrowser
+              title="Open in API Docs"
+              url={getDocsUrl(spec.docsUrlTemplate, endpoint.operationId)!}
+              icon={Icon.Book}
+              shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
+            />
+          )}
         </ActionPanel>
       }
     />

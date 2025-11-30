@@ -15,7 +15,7 @@ export function EditSpecForm({ spec, onSave }: EditSpecFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [urlError, setUrlError] = useState<string | undefined>();
 
-  async function handleSubmit(values: { name: string; url: string }) {
+  async function handleSubmit(values: { name: string; url: string; docsUrlTemplate: string }) {
     if (!values.name.trim()) {
       await showToast({
         style: Toast.Style.Failure,
@@ -44,10 +44,12 @@ export function EditSpecForm({ spec, onSave }: EditSpecFormProps) {
           name: values.name.trim(),
           url: values.url.trim(),
           baseUrl: newSpec.servers?.[0]?.url || spec.baseUrl,
+          docsUrlTemplate: values.docsUrlTemplate.trim() || undefined,
         });
       } else {
         await updateSpec(spec.id, {
           name: values.name.trim(),
+          docsUrlTemplate: values.docsUrlTemplate.trim() || undefined,
         });
       }
 
@@ -91,6 +93,13 @@ export function EditSpecForm({ spec, onSave }: EditSpecFormProps) {
         error={urlError}
         onChange={handleUrlChange}
         onBlur={(event) => handleUrlChange(event.target.value)}
+      />
+      <Form.TextField
+        id="docsUrlTemplate"
+        title="Docs URL Template"
+        defaultValue={spec.docsUrlTemplate || ""}
+        placeholder="https://docs.example.com/api/{operationId}"
+        info="Optional URL template for API documentation. Use {operationId} as placeholder."
       />
       <Form.Description title="Base URL" text={spec.baseUrl || "Not set"} />
       <Form.Description title="Added" text={new Date(spec.addedAt).toLocaleString()} />

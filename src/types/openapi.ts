@@ -97,6 +97,7 @@ export interface StoredSpec {
   url: string;
   addedAt: string;
   baseUrl?: string;
+  docsUrlTemplate?: string; // Template URL with {operationId} placeholder, e.g. "https://docs.example.com/api/{operationId}"
 }
 
 // Types for parsed endpoints

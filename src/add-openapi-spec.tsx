@@ -21,9 +21,10 @@ interface FormValues {
 export interface AddOpenAPISpecProps {
   initialUrl?: string;
   initialName?: string;
+  initialDocsUrlTemplate?: string;
 }
 
-export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISpecProps = {}) {
+export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrlTemplate }: AddOpenAPISpecProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [sourceType, setSourceType] = useState<SourceType>("url");
   const [urlError, setUrlError] = useState<string | undefined>();
@@ -111,6 +112,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISp
           name: specName,
           url: sourceUrl || `pasted:${Date.now()}`,
           baseUrl,
+          docsUrlTemplate: initialDocsUrlTemplate,
         },
         specId,
       );

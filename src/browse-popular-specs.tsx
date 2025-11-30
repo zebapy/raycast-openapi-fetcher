@@ -7,6 +7,7 @@ interface PopularSpec {
   description: string;
   url: string;
   category: string;
+  docsUrlTemplate?: string;
 }
 
 const POPULAR_SPECS: PopularSpec[] = popularSpecsData;
@@ -28,7 +29,9 @@ export default function BrowsePopularSpecs() {
   const groupedSpecs = groupByCategory(POPULAR_SPECS);
 
   function handleSelectSpec(spec: PopularSpec) {
-    push(<AddOpenAPISpec initialUrl={spec.url} initialName={spec.name} />);
+    push(
+      <AddOpenAPISpec initialUrl={spec.url} initialName={spec.name} initialDocsUrlTemplate={spec.docsUrlTemplate} />,
+    );
   }
 
   return (
