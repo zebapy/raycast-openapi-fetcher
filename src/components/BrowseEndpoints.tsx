@@ -93,7 +93,7 @@ ${curlSample}
   // Memoize spec JSON - only compute on demand via action
   const getEndpointSpecJson = useMemo(() => {
     return () => {
-      if (!openApiSpec) return "{}";
+      if (!openApiSpec?.paths) return "{}";
       const pathItem = openApiSpec.paths[endpoint.path];
       if (!pathItem) return "{}";
       const methodKey = endpoint.method.toLowerCase() as keyof typeof pathItem;

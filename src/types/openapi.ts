@@ -1,4 +1,8 @@
 // Types for OpenAPI specification structures
+// We use our own simplified types because:
+// 1. After dereferencing, $refs are resolved so we don't need ReferenceObject unions
+// 2. We primarily support OpenAPI v3, not the full v2/v3/v3.1 union
+// 3. Our types are simpler and more ergonomic for our use cases
 
 export interface OpenAPISpec {
   openapi?: string;
@@ -12,7 +16,7 @@ export interface OpenAPISpec {
     url: string;
     description?: string;
   }>;
-  paths: Record<string, PathItem>;
+  paths?: Record<string, PathItem>;
   components?: {
     schemas?: Record<string, Schema>;
     securitySchemes?: Record<string, unknown>;
@@ -69,6 +73,7 @@ export interface Schema {
   default?: unknown;
   example?: unknown;
   description?: string;
+  // After dereferencing, these should be resolved, but keeping for compatibility
   $ref?: string;
   allOf?: Schema[];
   oneOf?: Schema[];

@@ -118,7 +118,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName }: AddOpenAPISp
       await showToast({
         style: Toast.Style.Success,
         title: "Spec added successfully",
-        message: `${savedSpec.name} with ${Object.keys(spec.paths).length} paths`,
+        message: `${savedSpec.name} with ${Object.keys(spec.paths || {}).length} paths`,
       });
 
       // If we came from popular specs (has initialUrl), pop first so back navigation

@@ -39,6 +39,10 @@ export async function parseAndValidateSpec(content: string): Promise<OpenAPISpec
 export function parseEndpoints(spec: OpenAPISpec): ParsedEndpoint[] {
   const endpoints: ParsedEndpoint[] = [];
 
+  if (!spec.paths) {
+    return endpoints;
+  }
+
   for (const [path, pathItem] of Object.entries(spec.paths)) {
     for (const method of HTTP_METHODS) {
       const operation = pathItem[method];
