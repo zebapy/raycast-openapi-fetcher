@@ -38,13 +38,6 @@
       "mode": "view"
     },
     {
-      "name": "browse-popular-specs",
-      "title": "Browse Popular APIs",
-      "subtitle": "Download a spec from popular APIs",
-      "description": "Discover and add popular OpenAPI specifications",
-      "mode": "view"
-    },
-    {
       "name": "request-history",
       "title": "Request History",
       "subtitle": "View past API requests and responses",

@@ -7,11 +7,22 @@ import { showErrorToast } from "./lib/toast-utils";
 import { readFile } from "fs/promises";
 import { BrowseEndpoints } from "./components";
 import { OpenAPISpec } from "./types/openapi";
+import popularSpecs from "./data/popular-specs.json";
 
-type SourceType = "url" | "paste" | "file";
+type SourceType = "popular" | "url" | "paste" | "file";
+
+interface PopularSpec {
+  name: string;
+  description: string;
+  url: string;
+  category: string;
+  siteUrl: string;
+  docsUrlTemplate?: string;
+}
 
 interface FormValues {
   sourceType: SourceType;
+  popularSpec: string;
   url: string;
   content: string;
   filePath: string[];
@@ -32,8 +43,26 @@ export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrl
       try {
         let spec: OpenAPISpec;
         let sourceUrl: string | undefined;
+        let docsUrlTemplate: string | undefined = initialDocsUrlTemplate;
 
         switch (values.sourceType) {
+          case "popular": {
+            const selected = (popularSpecs as PopularSpec[]).find((s) => s.url === values.popularSpec);
+            if (!selected) {
+              throw new Error("Please select a popular spec");
+            }
+
+            await showToast({
+              style: Toast.Style.Animated,
+              title: `Fetching ${selected.name} spec...`,
+            });
+
+            spec = await fetchSpec(selected.url);
+            sourceUrl = selected.url;
+            docsUrlTemplate = selected.docsUrlTemplate;
+            break;
+          }
+
           case "url": {
             await showToast({
               style: Toast.Style.Animated,
@@ -81,7 +110,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrl
             name: specName,
             url: sourceUrl || `pasted:${Date.now()}`,
             baseUrl,
-            docsUrlTemplate: initialDocsUrlTemplate,
+            docsUrlTemplate,
           },
           specId,
         );
@@ -104,12 +133,18 @@ export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrl
     },
     initialValues: {
       sourceType: "url",
+      popularSpec: "",
       url: initialUrl || "",
       content: "",
       filePath: [],
       name: initialName || "",
     },
     validation: {
+      popularSpec: (value) => {
+        if (values.sourceType !== "popular") return undefined;
+        if (!value) return "Please select a popular spec";
+        return undefined;
+      },
       url: (value) => {
         if (values.sourceType !== "url") return undefined;
         if (!value) return "URL is required";
@@ -145,6 +180,7 @@ export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrl
         <Form.Dropdown.Item value="url" title="Fetch from URL" icon="🌐" />
         <Form.Dropdown.Item value="paste" title="Paste JSON/YAML Content" icon="📋" />
         <Form.Dropdown.Item value="file" title="Read from File" icon="📁" />
+        <Form.Dropdown.Item value="popular" title="Popular APIs" icon="⭐" />
       </Form.Dropdown>
 
       {values.sourceType === "url" && (
@@ -171,6 +207,42 @@ export default function AddOpenAPISpec({ initialUrl, initialName, initialDocsUrl
           allowMultipleSelection={false}
           canChooseDirectories={false}
         />
+      )}
+
+      {values.sourceType === "popular" && (
+        <Form.Dropdown
+          {...itemProps.popularSpec}
+          title="Popular API"
+          info="Choose from a curated list of popular API specs"
+        >
+          <Form.Dropdown.Item value="" title="Select an API..." />
+          {(popularSpecs as PopularSpec[]).map((spec) => (
+            <Form.Dropdown.Item
+              key={spec.url}
+              value={spec.url}
+              title={spec.name}
+              icon={
+                spec.category === "AI & ML"
+                  ? "🤖"
+                  : spec.category === "Developer Tools"
+                    ? "🛠️"
+                    : spec.category === "Communication"
+                      ? "💬"
+                      : spec.category === "Payments & Finance"
+                        ? "💳"
+                        : spec.category === "Cloud & Infrastructure"
+                          ? "☁️"
+                          : spec.category === "Security"
+                            ? "🔒"
+                            : spec.category === "Media & Entertainment"
+                              ? "🎵"
+                              : spec.category === "Games"
+                                ? "🎮"
+                                : "📦"
+              }
+            />
+          ))}
+        </Form.Dropdown>
       )}
 
       <Form.TextField
