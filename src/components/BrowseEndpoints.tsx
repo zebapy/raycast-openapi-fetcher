@@ -1,5 +1,5 @@
 import { Action, ActionPanel, Color, Detail, Icon, List, useNavigation } from "@raycast/api";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CurlOptions, generateCompactCurl } from "../lib/curl-generator";
 import { formatEndpointTitle, getBodyParams, groupEndpointsByTag } from "../lib/openapi-parser";
 import { getMethodColor } from "../lib/colors";
@@ -260,9 +260,22 @@ function EndpointListItem({
 
 export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: BrowseEndpointsProps) {
   const { openApiSpec, endpoints, token, isLoading, setToken } = useOpenApiSpec(spec);
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
 
   // Memoize grouped endpoints to avoid recomputing on every render
   const groupedEndpoints = useMemo(() => groupEndpointsByTag(endpoints), [endpoints]);
+
+  // Get list of all groups for the dropdown
+  const groups = useMemo(() => Array.from(groupedEndpoints.keys()), [groupedEndpoints]);
+
+  // Filter groups based on selection
+  const filteredGroups = useMemo(() => {
+    if (selectedGroup === "all") {
+      return Array.from(groupedEndpoints.entries());
+    }
+    const tagEndpoints = groupedEndpoints.get(selectedGroup);
+    return tagEndpoints ? [[selectedGroup, tagEndpoints] as const] : [];
+  }, [groupedEndpoints, selectedGroup]);
 
   return (
     <List
@@ -272,8 +285,18 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
       filtering={true}
       throttle={true}
       {...(initialSearchText ? { searchText: initialSearchText } : {})}
+      searchBarAccessory={
+        <List.Dropdown tooltip="Filter by Group" value={selectedGroup} onChange={setSelectedGroup}>
+          <List.Dropdown.Item title="All Groups" value="all" />
+          <List.Dropdown.Section title="Groups">
+            {groups.map((group) => (
+              <List.Dropdown.Item key={group} title={group} value={group} />
+            ))}
+          </List.Dropdown.Section>
+        </List.Dropdown>
+      }
     >
-      {Array.from(groupedEndpoints.entries()).map(([tag, tagEndpoints]) => (
+      {filteredGroups.map(([tag, tagEndpoints]) => (
         <List.Section key={tag} title={tag} subtitle={`${tagEndpoints.length} endpoints`}>
           {tagEndpoints.map((endpoint) => (
             <EndpointListItem
