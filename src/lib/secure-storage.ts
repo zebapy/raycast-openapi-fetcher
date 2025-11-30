@@ -3,13 +3,13 @@ import { LocalStorage } from "@raycast/api";
 const TOKEN_PREFIX = "api-token-v2-";
 
 /**
- * Token data structure with name and default spec association
+ * Token data structure with name and optional default spec association
  */
 export interface StoredToken {
   id: string; // Unique identifier for the token
   name: string; // User-provided name for the token
   token: string; // The actual token value
-  defaultSpecId: string; // The spec this token is auto-used for
+  defaultSpecId?: string; // The spec this token is auto-used for (optional)
   createdAt: string; // ISO timestamp
 }
 
@@ -21,12 +21,12 @@ function generateTokenId(): string {
 }
 
 /**
- * Save a token with name and default spec
+ * Save a token with name and optional default spec
  */
 export async function saveToken(data: {
   name: string;
   token: string;
-  defaultSpecId: string;
+  defaultSpecId?: string;
   id?: string;
 }): Promise<StoredToken> {
   const id = data.id || generateTokenId();

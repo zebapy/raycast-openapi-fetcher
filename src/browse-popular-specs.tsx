@@ -7,6 +7,7 @@ interface PopularSpec {
   description: string;
   url: string;
   category: string;
+  siteUrl?: string;
   docsUrlTemplate?: string;
 }
 
@@ -47,6 +48,7 @@ export default function BrowsePopularSpecs() {
               actions={
                 <ActionPanel>
                   <Action title="Add to Collection" icon={Icon.Plus} onAction={() => handleSelectSpec(spec)} />
+                  {spec.siteUrl && <Action.OpenInBrowser title="View Site" url={spec.siteUrl} icon={Icon.Globe} />}
                   <Action.OpenInBrowser title="View Spec URL" url={spec.url} />
                   <Action.CopyToClipboard
                     title="Copy Spec URL"

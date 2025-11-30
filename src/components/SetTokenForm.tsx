@@ -1,14 +1,20 @@
 import { Action, ActionPanel, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { useState } from "react";
+import { useForm, FormValidation } from "@raycast/utils";
 import { saveToken, updateToken, StoredToken } from "../lib/secure-storage";
 import { getErrorMessage } from "../lib/toast-utils";
 import { StoredSpec } from "../types/openapi";
+
+interface FormValues {
+  tokenName: string;
+  defaultSpecId: string;
+  token: string;
+}
 
 export interface SetTokenFormProps {
   /** Called after token is saved */
   onSave: () => void;
   /** Available specs to choose from as default spec */
-  availableSpecs: StoredSpec[];
+  availableSpecs?: StoredSpec[];
   /** Existing token data (for editing) */
   existingToken?: StoredToken;
   /** Mode: 'new' for adding a new token, 'edit' for editing existing */
@@ -19,83 +25,63 @@ export interface SetTokenFormProps {
 
 export function SetTokenForm({
   onSave,
-  availableSpecs,
+  availableSpecs = [],
   existingToken,
   mode = existingToken ? "edit" : "new",
   preselectedSpecId,
 }: SetTokenFormProps) {
   const { pop } = useNavigation();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const [tokenName, setTokenName] = useState(existingToken?.name || "");
-  const [selectedSpecId, setSelectedSpecId] = useState(existingToken?.defaultSpecId || preselectedSpecId || "");
+  const { handleSubmit, itemProps } = useForm<FormValues>({
+    async onSubmit(values) {
+      try {
+        if (mode === "edit" && existingToken) {
+          await updateToken(existingToken.id, {
+            name: values.tokenName.trim(),
+            token: values.token,
+            defaultSpecId: values.defaultSpecId || undefined,
+          });
+        } else {
+          await saveToken({
+            name: values.tokenName.trim(),
+            token: values.token,
+            defaultSpecId: values.defaultSpecId || undefined,
+          });
+        }
 
-  async function handleSubmit(values: { token: string }) {
-    if (!tokenName.trim()) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Name required",
-        message: "Please enter a name for this token",
-      });
-      return;
-    }
-
-    if (!selectedSpecId) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Default spec required",
-        message: "Please select a default spec for this token",
-      });
-      return;
-    }
-
-    if (!values.token) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Token is required",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      if (mode === "edit" && existingToken) {
-        await updateToken(existingToken.id, {
-          name: tokenName.trim(),
-          token: values.token,
-          defaultSpecId: selectedSpecId,
+        const specName = values.defaultSpecId
+          ? availableSpecs.find((s) => s.id === values.defaultSpecId)?.name || values.defaultSpecId
+          : null;
+        await showToast({
+          style: Toast.Style.Success,
+          title: mode === "edit" ? "Token updated" : "Token saved",
+          message: specName
+            ? `"${values.tokenName.trim()}" will be used for ${specName}`
+            : `"${values.tokenName.trim()}" saved`,
         });
-      } else {
-        await saveToken({
-          name: tokenName.trim(),
-          token: values.token,
-          defaultSpecId: selectedSpecId,
+        onSave();
+        pop();
+      } catch (error) {
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to save token",
+          message: getErrorMessage(error),
         });
       }
-
-      const specName = availableSpecs.find((s) => s.id === selectedSpecId)?.name || selectedSpecId;
-      await showToast({
-        style: Toast.Style.Success,
-        title: mode === "edit" ? "Token updated" : "Token saved",
-        message: `"${tokenName.trim()}" will be used for ${specName}`,
-      });
-      onSave();
-      pop();
-    } catch (error) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to save token",
-        message: getErrorMessage(error),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    },
+    initialValues: {
+      tokenName: existingToken?.name || "",
+      defaultSpecId: existingToken?.defaultSpecId || preselectedSpecId || "",
+      token: existingToken?.token || "",
+    },
+    validation: {
+      tokenName: FormValidation.Required,
+      token: FormValidation.Required,
+    },
+  });
 
   return (
     <Form
-      isLoading={isLoading}
       navigationTitle={mode === "new" ? "Add New Token" : "Edit Token"}
       actions={
         <ActionPanel>
@@ -104,31 +90,22 @@ export function SetTokenForm({
       }
     >
       <Form.TextField
-        id="tokenName"
+        {...itemProps.tokenName}
         title="Token Name"
         placeholder="e.g., Production API Key, Dev Token"
-        value={tokenName}
-        onChange={setTokenName}
         info="A descriptive name to identify this token"
       />
       <Form.Dropdown
-        id="defaultSpecId"
+        {...itemProps.defaultSpecId}
         title="Default Spec"
-        value={selectedSpecId}
-        onChange={setSelectedSpecId}
-        info="This token will be automatically used when making requests to this spec"
+        info="Optionally link this token to a spec for automatic use"
       >
-        <Form.Dropdown.Item value="" title="Select a spec..." icon={Icon.Document} />
+        <Form.Dropdown.Item value="" title="None (no default spec)" icon={Icon.MinusCircle} />
         {availableSpecs.map((spec) => (
           <Form.Dropdown.Item key={spec.id} value={spec.id} title={spec.name} icon={Icon.Document} />
         ))}
       </Form.Dropdown>
-      <Form.PasswordField
-        id="token"
-        title="API Token"
-        placeholder="Enter your API token"
-        defaultValue={existingToken?.token}
-      />
+      <Form.PasswordField {...itemProps.token} title="API Token" placeholder="Enter your API token" />
       <Form.Description
         title="Security"
         text="Tokens are stored in Raycast's local encrypted database and can only be accessed by this extension. To clear all data, use 'Clear Local Storage' in Raycast Preferences → Extensions → OpenAPI Fetcher."

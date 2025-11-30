@@ -91,6 +91,8 @@ ${curlSample}
     `.trim();
   }, [endpoint, curlSample, requestBodyTS]);
 
+  const pathParams = useMemo(() => endpoint.parameters.filter((p) => p.in === "path"), [endpoint.parameters]);
+
   return (
     <Detail
       navigationTitle={`${endpoint.method} ${endpoint.path}`}
@@ -102,6 +104,19 @@ ${curlSample}
           </Detail.Metadata.TagList>
           <Detail.Metadata.Label title="Path" text={endpoint.path} />
           {endpoint.operationId && <Detail.Metadata.Label title="Operation ID" text={endpoint.operationId} />}
+          {pathParams.length > 0 && (
+            <>
+              <Detail.Metadata.Separator />
+              <Detail.Metadata.Label title="URL Parameters" text="" />
+              {pathParams.map((param) => (
+                <Detail.Metadata.Label
+                  key={param.name}
+                  title={`  ${param.name}${param.required ? " *" : ""}`}
+                  text={param.description || param.schema?.type || "string"}
+                />
+              ))}
+            </>
+          )}
           <Detail.Metadata.Separator />
           <Detail.Metadata.TagList title="Tags">
             {endpoint.tags.map((t) => (
