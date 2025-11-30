@@ -164,8 +164,42 @@ function getSchemaTypeString(schema: Schema): string {
 }
 
 /**
+ * Resolve a schema by merging allOf/oneOf/anyOf and following $ref patterns.
+ * Returns a flattened schema with properties.
+ */
+function resolveSchema(schema: Schema): Schema {
+  // If schema has allOf, merge all schemas together
+  if (schema.allOf && schema.allOf.length > 0) {
+    const merged: Schema = { type: "object", properties: {}, required: [] };
+    for (const subSchema of schema.allOf) {
+      const resolved = resolveSchema(subSchema);
+      if (resolved.properties) {
+        merged.properties = { ...merged.properties, ...resolved.properties };
+      }
+      if (resolved.required) {
+        merged.required = [...(merged.required || []), ...resolved.required];
+      }
+      if (resolved.description && !merged.description) {
+        merged.description = resolved.description;
+      }
+    }
+    return merged;
+  }
+
+  // If schema has oneOf/anyOf, use the first option as representative
+  if (schema.oneOf && schema.oneOf.length > 0) {
+    return resolveSchema(schema.oneOf[0]);
+  }
+  if (schema.anyOf && schema.anyOf.length > 0) {
+    return resolveSchema(schema.anyOf[0]);
+  }
+
+  return schema;
+}
+
+/**
  * Extract body parameters from request body schema.
- * Assumes the spec has been dereferenced (no $refs to resolve).
+ * Handles allOf/oneOf/anyOf schemas by resolving them first.
  */
 export function getBodyParams(endpoint: ParsedEndpoint): BodyParameter[] {
   if (!endpoint.requestBody?.content) {
@@ -182,7 +216,8 @@ export function getBodyParams(endpoint: ParsedEndpoint): BodyParameter[] {
     return [];
   }
 
-  const schema = mediaType.schema;
+  // Resolve allOf/oneOf/anyOf schemas
+  const schema = resolveSchema(mediaType.schema);
   const properties = schema.properties;
 
   // If no properties but has a type, return a single body parameter representing the whole body

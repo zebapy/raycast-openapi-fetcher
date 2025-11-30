@@ -66,17 +66,14 @@ function EndpointDetail({
         : "No parameters";
 
     const bodyParams = getBodyParams(endpoint);
-    const bodyParamsList =
+    const bodyParamsTable =
       bodyParams.length > 0
-        ? bodyParams
-            .map(
-              (p) =>
-                `• **${p.name}** (${p.type})${p.required ? " *required*" : ""}: ${p.description || "No description"}`,
-            )
-            .join("\n")
+        ? `| Name | Type | Required | Description |
+|------|------|----------|-------------|
+${bodyParams.map((p) => `| \`${p.name}\` | ${p.type} | ${p.required ? "Yes" : "No"} | ${p.description || "-"} |`).join("\n")}`
         : null;
 
-    const bodySection = bodyParamsList ? `\n\n### Request Body\n${bodyParamsList}` : "";
+    const bodySection = bodyParamsTable ? `\n\n### Request Body\n${bodyParamsTable}` : "";
 
     return `
 ## ${endpoint.summary || formatEndpointTitle(endpoint)}
