@@ -7,5 +7,8 @@ export type { EditSpecFormProps } from "./EditSpecForm";
 export { RequestForm } from "./RequestForm";
 export type { RequestFormProps } from "./RequestForm";
 
+export { ResponseDetail } from "./ResponseDetail";
+export type { ResponseDetailProps } from "./ResponseDetail";
+
 export { BrowseEndpoints } from "./BrowseEndpoints";
 export type { BrowseEndpointsProps } from "./BrowseEndpoints";

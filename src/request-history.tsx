@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { getRequestHistory, deleteRequestHistoryEntry, clearRequestHistory, getSpec } from "./lib/storage";
 import { getMethodColor } from "./lib/colors";
 import { getErrorMessage } from "./lib/toast-utils";
-import { BrowseEndpoints } from "./components";
+import { BrowseEndpoints, ResponseDetail } from "./components";
 import { RequestHistoryEntry, StoredSpec } from "./types/openapi";
 
 function generateCurlFromHistory(entry: RequestHistoryEntry): string {
@@ -174,71 +174,20 @@ interface RequestDetailProps {
 }
 
 function RequestDetail({ entry }: RequestDetailProps) {
-  const headersText = Object.entries(entry.headers)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
-
-  const markdown = `
-# ${entry.method} ${entry.path}
-
-**API:** ${entry.specName}  
-**Time:** ${new Date(entry.timestamp).toLocaleString()}
-
-## Request
-
-**URL:** \`${entry.url}\`
-
-### Headers
-\`\`\`
-${headersText || "No custom headers"}
-\`\`\`
-
-${entry.body ? `### Body\n\`\`\`json\n${entry.body}\n\`\`\`` : ""}
-
-## Response
-
-**Status:** ${entry.response.status} ${entry.response.statusText}  
-**Content-Type:** ${entry.response.contentType || "unknown"}
-
-\`\`\`${entry.response.contentType?.includes("json") ? "json" : ""}
-${entry.response.body}
-\`\`\`
-  `.trim();
-
   return (
-    <Detail
-      markdown={markdown}
-      actions={
-        <ActionPanel>
-          <Action.CopyToClipboard
-            title="Copy as Curl"
-            content={generateCurlFromHistory(entry)}
-            shortcut={{ modifiers: ["cmd"], key: "c" }}
-          />
-          <Action.CopyToClipboard
-            title="Copy Response"
-            content={entry.response.body}
-            shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          />
-          <Action.CopyToClipboard title="Copy Request URL" content={entry.url} />
-          {entry.body && <Action.CopyToClipboard title="Copy Request Body" content={entry.body} />}
-        </ActionPanel>
-      }
-      metadata={
-        <Detail.Metadata>
-          <Detail.Metadata.Label title="API" text={entry.specName} />
-          <Detail.Metadata.Label title="Method" text={entry.method} />
-          <Detail.Metadata.Label title="Path" text={entry.path} />
-          <Detail.Metadata.Separator />
-          <Detail.Metadata.TagList title="Status">
-            <Detail.Metadata.TagList.Item
-              text={`${entry.response.status} ${entry.response.statusText}`}
-              color={entry.response.status < 400 ? Color.Green : Color.Red}
-            />
-          </Detail.Metadata.TagList>
-          <Detail.Metadata.Label title="Time" text={new Date(entry.timestamp).toLocaleString()} />
-        </Detail.Metadata>
-      }
+    <ResponseDetail
+      method={entry.method}
+      path={entry.path}
+      url={entry.url}
+      status={entry.response.status}
+      statusText={entry.response.statusText}
+      responseBody={entry.response.body}
+      contentType={entry.response.contentType}
+      requestBody={entry.body}
+      headers={entry.headers}
+      specName={entry.specName}
+      timestamp={new Date(entry.timestamp).toLocaleString()}
+      curlCommand={generateCurlFromHistory(entry)}
     />
   );
 }

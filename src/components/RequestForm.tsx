@@ -1,18 +1,12 @@
 import { Action, ActionPanel, Clipboard, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { CurlOptions, generateCurl } from "../lib/curl-generator";
-import {
-  BodyParameter,
-  getBodyParams,
-  getHeaderParams,
-  getPathParams,
-  getQueryParams,
-  getRequestBodyContentType,
-} from "../lib/openapi-parser";
+import { getHeaderParams, getPathParams, getQueryParams, getRequestBodyContentType } from "../lib/openapi-parser";
 import { addRequestToHistory, maskSensitiveHeaders } from "../lib/storage";
 import { validateJson } from "../lib/validation";
 import { getErrorMessage } from "../lib/toast-utils";
 import { ParsedEndpoint } from "../types/openapi";
+import { ResponseDetail } from "./ResponseDetail";
 
 type AuthSource = "stored" | "custom";
 
@@ -24,22 +18,19 @@ export interface RequestFormProps {
 }
 
 export function RequestForm({ endpoint, curlOptions, specId, specName }: RequestFormProps) {
-  const { pop } = useNavigation();
+  const { push } = useNavigation();
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [bodyJson, setBodyJson] = useState<string>("");
   const [bodyError, setBodyError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<string | null>(null);
   const [authSource, setAuthSource] = useState<AuthSource>(curlOptions.authToken ? "stored" : "custom");
   const [customToken, setCustomToken] = useState<string>("");
-  const [bodyParamValues, setBodyParamValues] = useState<Record<string, string>>({});
 
   const activeToken = authSource === "stored" ? curlOptions.authToken : customToken;
 
   const pathParams = getPathParams(endpoint);
   const queryParams = getQueryParams(endpoint);
   const headerParams = getHeaderParams(endpoint);
-  const bodyParams = useMemo(() => getBodyParams(endpoint), [endpoint]);
 
   const hasBody = endpoint.requestBody && ["POST", "PUT", "PATCH"].includes(endpoint.method);
   const allParams = [...pathParams, ...queryParams, ...headerParams];
@@ -48,33 +39,8 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
     setParamValues((prev) => ({ ...prev, [name]: value }));
   }
 
-  function updateBodyParam(name: string, value: string) {
-    setBodyParamValues((prev) => ({ ...prev, [name]: value }));
-  }
-
-  // Build JSON body from individual body parameters
-  function buildBodyFromParams(): string {
-    if (Object.keys(bodyParamValues).length === 0) {
-      return "";
-    }
-    const body: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(bodyParamValues)) {
-      if (value.trim()) {
-        // Try to parse as JSON for objects/arrays/numbers/booleans
-        try {
-          body[key] = JSON.parse(value);
-        } catch {
-          // If not valid JSON, use as string
-          body[key] = value;
-        }
-      }
-    }
-    return Object.keys(body).length > 0 ? JSON.stringify(body, null, 2) : "";
-  }
-
-  // Get effective body: use raw JSON if provided, otherwise build from params
   function getEffectiveBody(): string {
-    return bodyJson.trim() || buildBodyFromParams();
+    return bodyJson.trim();
   }
 
   function handleBodyChange(value: string) {
@@ -131,7 +97,6 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
     }
 
     setIsLoading(true);
-    setResponse(null);
 
     try {
       const url = buildRequestUrl();
@@ -204,16 +169,24 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
         },
       });
 
-      const statusEmoji = res.ok ? "✅" : "❌";
-      setResponse(`${statusEmoji} Status: ${res.status} ${res.statusText}\n\n${responseText}`);
-
       await showToast({
         style: res.ok ? Toast.Style.Success : Toast.Style.Failure,
         title: `${res.status} ${res.statusText}`,
       });
+
+      push(
+        <ResponseDetail
+          method={endpoint.method}
+          path={endpoint.path}
+          url={url}
+          status={res.status}
+          statusText={res.statusText}
+          responseBody={responseText}
+          contentType={contentType}
+        />,
+      );
     } catch (error) {
       const message = getErrorMessage(error);
-      setResponse(`❌ Error: ${message}`);
       await showToast({
         style: Toast.Style.Failure,
         title: "Request failed",
@@ -231,7 +204,6 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       style: Toast.Style.Success,
       title: "Copied to clipboard",
     });
-    pop();
   }
 
   return (
@@ -247,18 +219,6 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
             icon={Icon.Clipboard}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
-          <Action.CopyToClipboard
-            title="Copy Curl Without Closing"
-            content={getCurlWithValues()}
-            shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-          />
-          {response && (
-            <Action.CopyToClipboard
-              title="Copy Response"
-              content={response}
-              shortcut={{ modifiers: ["cmd"], key: "r" }}
-            />
-          )}
         </ActionPanel>
       }
     >
@@ -344,51 +304,20 @@ export function RequestForm({ endpoint, curlOptions, specId, specName }: Request
       {hasBody && (
         <>
           <Form.Separator />
-          <Form.Description title="Request Body" text="Fill in body parameters or use raw JSON below" />
-          {bodyParams.length > 0 && (
-            <>
-              {bodyParams.map((param) => (
-                <Form.TextField
-                  key={param.name}
-                  id={`body_${param.name}`}
-                  title={`${param.name}${param.required ? " *" : ""}`}
-                  placeholder={
-                    param.example !== undefined
-                      ? `e.g. ${JSON.stringify(param.example)}`
-                      : param.description || `Enter ${param.name} (${param.type})`
-                  }
-                  info={`${param.type}${param.required ? " - Required" : " - Optional"}${param.description ? ` - ${param.description}` : ""}`}
-                  onChange={(value) => updateBodyParam(param.name, value)}
-                />
-              ))}
-              <Form.Separator />
-              <Form.Description title="Raw JSON (Optional)" text="Override body parameters with raw JSON" />
-            </>
-          )}
+          <Form.Description title="Request Body" text="JSON body for the request" />
           <Form.TextArea
             id="body"
             title="Body (JSON)"
-            placeholder={bodyParams.length > 0 ? "Leave empty to use parameters above" : '{"key": "value"}'}
+            placeholder='{"key": "value"}'
             error={bodyError}
             onChange={handleBodyChange}
-            info={
-              bodyParams.length > 0
-                ? "If provided, this overrides the individual body parameters"
-                : "Enter valid JSON for the request body"
-            }
+            info="Enter valid JSON for the request body"
           />
         </>
       )}
 
       {allParams.length === 0 && !hasBody && (
         <Form.Description title="No Parameters" text="This endpoint has no configurable parameters." />
-      )}
-
-      {response && (
-        <>
-          <Form.Separator />
-          <Form.Description title="Response" text={response} />
-        </>
       )}
     </Form>
   );

@@ -113,15 +113,12 @@ ${curlSample}
       }
       actions={
         <ActionPanel>
+          <Action.CopyToClipboard title="Copy as Curl" content={generateCompactCurl(endpoint, curlOptions)} />
           <Action.Push
             title="Build Request"
             target={<RequestForm endpoint={endpoint} curlOptions={curlOptions} specId={spec.id} specName={spec.name} />}
             icon={Icon.Wand}
-          />
-          <Action.CopyToClipboard
-            title="Copy as Curl"
-            content={generateCompactCurl(endpoint, curlOptions)}
-            shortcut={{ modifiers: ["cmd"], key: "c" }}
+            shortcut={{ modifiers: ["cmd"], key: "b" }}
           />
           <Action.CopyToClipboard
             title="Copy Spec JSON"
