@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Color, Detail, Icon, List, useNavigation } from "@raycast/api";
 import { useMemo } from "react";
 import { CurlOptions, generateCompactCurl } from "../lib/curl-generator";
 import { formatEndpointTitle, getBodyParams, groupEndpointsByTag } from "../lib/openapi-parser";
@@ -14,14 +14,15 @@ export interface BrowseEndpointsProps {
   initialSearchText?: string;
 }
 
-// Separate component for endpoint item to prevent re-renders
-function EndpointListItem({
+// Detail view for a single endpoint
+function EndpointDetail({
   endpoint,
   spec,
   openApiSpec,
   token,
   onTokenChange,
   setToken,
+  getEndpointSpecJson,
 }: {
   endpoint: ParsedEndpoint;
   spec: StoredSpec;
@@ -29,6 +30,7 @@ function EndpointListItem({
   token: string | undefined;
   onTokenChange?: () => void;
   setToken: (token: string | undefined) => void;
+  getEndpointSpecJson: () => string;
 }) {
   const { push } = useNavigation();
 
@@ -42,7 +44,16 @@ function EndpointListItem({
     [spec.baseUrl, openApiSpec?.servers, token],
   );
 
-  // Memoize the detail markdown - only compute when endpoint or token changes
+  const displayCurlOptions = useMemo(
+    () => ({
+      ...curlOptions,
+      authToken: token ? "••••••••" : undefined,
+    }),
+    [curlOptions, token],
+  );
+
+  const curlSample = useMemo(() => generateCompactCurl(endpoint, displayCurlOptions), [endpoint, displayCurlOptions]);
+
   const detailMarkdown = useMemo(() => {
     const paramsList =
       endpoint.parameters.length > 0
@@ -67,12 +78,6 @@ function EndpointListItem({
 
     const bodySection = bodyParamsList ? `\n\n### Request Body\n${bodyParamsList}` : "";
 
-    const displayCurlOptions = {
-      ...curlOptions,
-      authToken: token ? "••••••••" : undefined,
-    };
-    const curlSample = generateCompactCurl(endpoint, displayCurlOptions);
-
     return `
 ## ${endpoint.summary || formatEndpointTitle(endpoint)}
 
@@ -88,59 +93,26 @@ ${endpoint.hasAuth ? "🔒 **Requires authentication**" : ""}
 ${curlSample}
 \`\`\`
     `.trim();
-  }, [endpoint, token, curlOptions]);
-
-  // Memoize spec JSON - only compute on demand via action
-  const getEndpointSpecJson = useMemo(() => {
-    return () => {
-      if (!openApiSpec?.paths) return "{}";
-      const pathItem = openApiSpec.paths[endpoint.path];
-      if (!pathItem) return "{}";
-      const methodKey = endpoint.method.toLowerCase() as keyof typeof pathItem;
-      const operation = pathItem[methodKey];
-      return JSON.stringify({ path: endpoint.path, method: endpoint.method, operation }, null, 2);
-    };
-  }, [openApiSpec, endpoint.path, endpoint.method]);
+  }, [endpoint, curlSample]);
 
   return (
-    <List.Item
-      key={`${endpoint.method}-${endpoint.path}`}
-      title={formatEndpointTitle(endpoint)}
-      subtitle={endpoint.path}
-      keywords={[
-        endpoint.method,
-        endpoint.path,
-        endpoint.operationId || "",
-        endpoint.summary || "",
-        endpoint.description || "",
-        ...endpoint.tags,
-      ]}
-      icon={{ source: Icon.Circle, tintColor: getMethodColor(endpoint.method) }}
-      accessories={[endpoint.hasAuth ? { icon: Icon.Lock, tooltip: "Requires Auth" } : {}]}
-      detail={
-        <List.Item.Detail
-          markdown={detailMarkdown}
-          metadata={
-            <List.Item.Detail.Metadata>
-              <List.Item.Detail.Metadata.TagList title="Method">
-                <List.Item.Detail.Metadata.TagList.Item
-                  text={endpoint.method}
-                  color={getMethodColor(endpoint.method)}
-                />
-              </List.Item.Detail.Metadata.TagList>
-              <List.Item.Detail.Metadata.Label title="Path" text={endpoint.path} />
-              {endpoint.operationId && (
-                <List.Item.Detail.Metadata.Label title="Operation ID" text={endpoint.operationId} />
-              )}
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.TagList title="Tags">
-                {endpoint.tags.map((t) => (
-                  <List.Item.Detail.Metadata.TagList.Item key={t} text={t} color={Color.Blue} />
-                ))}
-              </List.Item.Detail.Metadata.TagList>
-            </List.Item.Detail.Metadata>
-          }
-        />
+    <Detail
+      navigationTitle={`${endpoint.method} ${endpoint.path}`}
+      markdown={detailMarkdown}
+      metadata={
+        <Detail.Metadata>
+          <Detail.Metadata.TagList title="Method">
+            <Detail.Metadata.TagList.Item text={endpoint.method} color={getMethodColor(endpoint.method)} />
+          </Detail.Metadata.TagList>
+          <Detail.Metadata.Label title="Path" text={endpoint.path} />
+          {endpoint.operationId && <Detail.Metadata.Label title="Operation ID" text={endpoint.operationId} />}
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.TagList title="Tags">
+            {endpoint.tags.map((t) => (
+              <Detail.Metadata.TagList.Item key={t} text={t} color={Color.Blue} />
+            ))}
+          </Detail.Metadata.TagList>
+        </Detail.Metadata>
       }
       actions={
         <ActionPanel>
@@ -191,6 +163,101 @@ ${curlSample}
   );
 }
 
+// Separate component for endpoint item to prevent re-renders
+function EndpointListItem({
+  endpoint,
+  spec,
+  openApiSpec,
+  token,
+  onTokenChange,
+  setToken,
+}: {
+  endpoint: ParsedEndpoint;
+  spec: StoredSpec;
+  openApiSpec: ReturnType<typeof useOpenApiSpec>["openApiSpec"];
+  token: string | undefined;
+  onTokenChange?: () => void;
+  setToken: (token: string | undefined) => void;
+}) {
+  const curlOptions: CurlOptions = useMemo(
+    () => ({
+      baseUrl: spec.baseUrl || openApiSpec?.servers?.[0]?.url || "https://api.example.com",
+      authToken: token,
+      authType: "bearer",
+      includeExampleBody: true,
+    }),
+    [spec.baseUrl, openApiSpec?.servers, token],
+  );
+
+  // Memoize spec JSON - only compute on demand via action
+  const getEndpointSpecJson = useMemo(() => {
+    return () => {
+      if (!openApiSpec?.paths) return "{}";
+      const pathItem = openApiSpec.paths[endpoint.path];
+      if (!pathItem) return "{}";
+      const methodKey = endpoint.method.toLowerCase() as keyof typeof pathItem;
+      const operation = pathItem[methodKey];
+      return JSON.stringify({ path: endpoint.path, method: endpoint.method, operation }, null, 2);
+    };
+  }, [openApiSpec, endpoint.path, endpoint.method]);
+
+  return (
+    <List.Item
+      key={`${endpoint.method}-${endpoint.path}`}
+      title={formatEndpointTitle(endpoint)}
+      subtitle={endpoint.path}
+      keywords={[
+        endpoint.method,
+        endpoint.path,
+        endpoint.operationId || "",
+        endpoint.summary || "",
+        endpoint.description || "",
+        ...endpoint.tags,
+      ]}
+      icon={{ source: Icon.Circle, tintColor: getMethodColor(endpoint.method) }}
+      accessories={[
+        { tag: { value: endpoint.method, color: getMethodColor(endpoint.method) } },
+        endpoint.hasAuth ? { icon: Icon.Lock, tooltip: "Requires Auth" } : {},
+      ]}
+      actions={
+        <ActionPanel>
+          <Action.Push
+            title="View Details"
+            target={
+              <EndpointDetail
+                endpoint={endpoint}
+                spec={spec}
+                openApiSpec={openApiSpec}
+                token={token}
+                onTokenChange={onTokenChange}
+                setToken={setToken}
+                getEndpointSpecJson={getEndpointSpecJson}
+              />
+            }
+            icon={Icon.Eye}
+          />
+          <Action.Push
+            title="Build Request"
+            target={<RequestForm endpoint={endpoint} curlOptions={curlOptions} specId={spec.id} specName={spec.name} />}
+            icon={Icon.Wand}
+          />
+          <Action.CopyToClipboard
+            title="Copy as Curl"
+            content={generateCompactCurl(endpoint, curlOptions)}
+            shortcut={{ modifiers: ["cmd"], key: "c" }}
+          />
+          <Action.CopyToClipboard
+            title="Copy Spec JSON"
+            content={getEndpointSpecJson()}
+            icon={Icon.CodeBlock}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "j" }}
+          />
+        </ActionPanel>
+      }
+    />
+  );
+}
+
 export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: BrowseEndpointsProps) {
   const { openApiSpec, endpoints, token, isLoading, setToken } = useOpenApiSpec(spec);
 
@@ -202,7 +269,6 @@ export function BrowseEndpoints({ spec, onTokenChange, initialSearchText }: Brow
       isLoading={isLoading}
       searchBarPlaceholder="Search endpoints..."
       navigationTitle={spec.name}
-      isShowingDetail
       filtering={true}
       throttle={true}
       {...(initialSearchText ? { searchText: initialSearchText } : {})}
